@@ -52,7 +52,7 @@ function PostForm({ initial, onCancel, onSaved }) {
     setUploading(true)
     try {
       const token = getAdminToken()
-      const { url } = await uploadFile('/admin/posts/upload', file, 'image', token)
+      const { url } = await uploadFile('/admin/posts/upload', file, 'image', token, { title: form.title })
       update('imageUrl', url)
     } catch (err) {
       if (!handleError(err)) setError(err.message || 'Não foi possível enviar a imagem.')

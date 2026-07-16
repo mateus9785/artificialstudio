@@ -1,7 +1,9 @@
 import { Router } from 'express'
+import path from 'node:path'
+import fs from 'node:fs/promises'
 import { pool } from '../db/pool.js'
 import { requireAdmin } from '../middleware/requireAdmin.js'
-import { uploadPostImage } from '../middleware/upload.js'
+import { uploadPostImage, convertToWebp, resolveWebpFilename, UPLOADS_DIR } from '../middleware/upload.js'
 import { slugify } from '../utils/slug.js'
 
 export const postsRouter = Router()
@@ -60,12 +62,20 @@ postsRouter.get('/admin/posts', requireAdmin, async (req, res) => {
   res.json(rows.map(serializePost))
 })
 
-// Admin: upload de imagem de capa do post
+// Admin: upload de imagem de capa do post (convertida para .webp, máx. 150KB)
 postsRouter.post('/admin/posts/upload', requireAdmin, (req, res) => {
-  uploadPostImage.single('image')(req, res, (err) => {
+  uploadPostImage.single('image')(req, res, async (err) => {
     if (err) return res.status(400).json({ error: err.message })
     if (!req.file) return res.status(400).json({ error: 'Nenhuma imagem enviada.' })
-    res.status(201).json({ url: `/uploads/posts/${req.file.filename}` })
+
+    try {
+      const webpBuffer = await convertToWebp(req.file.buffer)
+      const filename = resolveWebpFilename(req.body.title, req.file.originalname)
+      await fs.writeFile(path.join(UPLOADS_DIR, filename), webpBuffer)
+      res.status(201).json({ url: `/uploads/posts/${filename}` })
+    } catch {
+      res.status(500).json({ error: 'Falha ao processar a imagem.' })
+    }
   })
 })
 

@@ -34,9 +34,12 @@ export const api = {
   del: (path, token) => request(path, { method: 'DELETE', token }),
 }
 
-export async function uploadFile(path, file, fieldName, token) {
+export async function uploadFile(path, file, fieldName, token, extraFields = {}) {
   const formData = new FormData()
   formData.append(fieldName, file)
+  for (const [key, value] of Object.entries(extraFields)) {
+    formData.append(key, value)
+  }
 
   const res = await fetch(`${API_URL}${path}`, {
     method: 'POST',
