@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { api } from '../lib/api'
 import PostCard from './PostCard'
+import Pagination from './Pagination'
 
+const PAGE_SIZE = 6
 const SITE_URL = 'https://artificialstudio.com.br'
 const PAGE_TITLE = 'Blog | Artificial Studio'
 const PAGE_DESCRIPTION =
@@ -46,6 +48,7 @@ function useBlogListSeo() {
 export default function BlogList() {
   const [posts, setPosts] = useState([])
   const [status, setStatus] = useState('loading')
+  const [page, setPage] = useState(1)
 
   useBlogListSeo()
 
@@ -66,6 +69,14 @@ export default function BlogList() {
       active = false
     }
   }, [])
+
+  const totalPages = Math.max(1, Math.ceil(posts.length / PAGE_SIZE))
+  const paginatedPosts = posts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+
+  function handlePageChange(nextPage) {
+    setPage(nextPage)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
   return (
     <section className="relative py-28 overflow-hidden" style={{ background: '#070707' }}>
@@ -113,10 +124,12 @@ export default function BlogList() {
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {posts.map((post) => (
+          {paginatedPosts.map((post) => (
             <PostCard key={post.id} post={post} />
           ))}
         </div>
+
+        <Pagination page={page} totalPages={totalPages} onPageChange={handlePageChange} />
       </div>
     </section>
   )

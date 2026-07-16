@@ -1,8 +1,12 @@
 import { useEffect, useState } from 'react'
-import { Plus, Pencil, Trash2, X, Upload } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Upload, TrendingUp } from 'lucide-react'
 import { api, API_URL, uploadFile } from '../../lib/api'
 import { getAdminToken } from '../../lib/adminAuth'
+import { hexToRgba } from '../../lib/color'
 import { useAdminGuard } from '../useAdminGuard'
+import Pagination from '../../components/Pagination'
+
+const PAGE_SIZE = 6
 
 const EMPTY_FORM = {
   title: '',
@@ -240,12 +244,81 @@ const inputStyle = {
   color: '#e4e4e7',
 }
 
+function AdminPostCard({ post, onEdit, onDelete }) {
+  const gradient = `linear-gradient(135deg, ${hexToRgba(post.tagColor, 0.06)} 0%, ${hexToRgba(post.tagColor, 0.02)} 100%)`
+  const image = resolveImageUrl(post.imageUrl)
+
+  return (
+    <article className="rounded-2xl overflow-hidden" style={{ background: gradient, border: '1px solid rgba(255,255,255,0.06)' }}>
+      <div
+        className="relative h-40 overflow-hidden"
+        style={{
+          background: `linear-gradient(135deg, rgba(0,0,0,0.6), rgba(0,0,0,0.3)), ${gradient}`,
+          borderBottom: '1px solid rgba(255,255,255,0.05)',
+        }}
+      >
+        {image ? (
+          <img src={image} alt={post.title} loading="lazy" decoding="async" className="absolute inset-0 w-full h-full object-cover" />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center text-4xl opacity-20 select-none">📝</div>
+        )}
+        {post.trending && (
+          <div
+            className="absolute top-3 right-3 flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium"
+            style={{ background: 'rgba(0,0,0,0.6)', border: `1px solid ${post.tagColor}40`, color: post.tagColor, backdropFilter: 'blur(8px)' }}
+          >
+            <TrendingUp size={10} />
+            Trending
+          </div>
+        )}
+      </div>
+
+      <div className="p-5">
+        <span
+          className="inline-block text-xs font-medium px-2.5 py-1 rounded-md mb-3"
+          style={{ background: `${post.tagColor}14`, color: post.tagColor, border: `1px solid ${post.tagColor}22` }}
+        >
+          {post.tag}
+        </span>
+
+        <h3 className="font-semibold mb-2 leading-snug line-clamp-2" style={{ color: '#e4e4e7', fontSize: '1rem', letterSpacing: '-0.2px' }}>
+          {post.title}
+        </h3>
+
+        <p className="text-xs mb-4" style={{ color: '#52525b' }}>
+          {post.publishedAt?.slice(0, 10)}
+        </p>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => onEdit(post)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium cursor-pointer"
+            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: '#a1a1aa' }}
+          >
+            <Pencil size={13} />
+            Editar
+          </button>
+          <button
+            onClick={() => onDelete(post)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium cursor-pointer"
+            style={{ background: 'rgba(248,113,113,0.08)', color: '#f87171' }}
+          >
+            <Trash2 size={13} />
+            Excluir
+          </button>
+        </div>
+      </div>
+    </article>
+  )
+}
+
 export default function Posts() {
   const { handleError } = useAdminGuard()
   const [posts, setPosts] = useState([])
   const [status, setStatus] = useState('loading')
   const [editing, setEditing] = useState(null)
   const [showForm, setShowForm] = useState(false)
+  const [page, setPage] = useState(1)
 
   function loadPosts() {
     setStatus('loading')
@@ -262,6 +335,14 @@ export default function Posts() {
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(loadPosts, [])
+
+  const totalPages = Math.max(1, Math.ceil(posts.length / PAGE_SIZE))
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages)
+  }, [page, totalPages])
+
+  const paginatedPosts = posts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
   function openCreate() {
     setEditing(EMPTY_FORM)
@@ -309,56 +390,15 @@ export default function Posts() {
       {status === 'error' && <p style={{ color: '#f87171' }}>Não foi possível carregar os posts.</p>}
 
       {status === 'ready' && (
-        <div className="flex flex-col gap-2">
+        <>
           {posts.length === 0 && <p style={{ color: '#52525b' }}>Nenhum post cadastrado ainda.</p>}
-          {posts.map((post) => (
-            <div
-              key={post.id}
-              className="flex items-center justify-between gap-4 p-4 rounded-xl"
-              style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
-            >
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <span
-                    className="text-xs font-medium px-2 py-0.5 rounded-md"
-                    style={{ background: `${post.tagColor}14`, color: post.tagColor }}
-                  >
-                    {post.tag}
-                  </span>
-                  {post.trending && (
-                    <span className="text-xs" style={{ color: '#f59e0b' }}>
-                      Trending
-                    </span>
-                  )}
-                </div>
-                <p className="text-sm font-medium truncate" style={{ color: '#e4e4e7' }}>
-                  {post.title}
-                </p>
-                <p className="text-xs mt-0.5" style={{ color: '#52525b' }}>
-                  {post.publishedAt?.slice(0, 10)}
-                </p>
-              </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <button
-                  onClick={() => openEdit(post)}
-                  aria-label="Editar"
-                  className="w-9 h-9 rounded-lg flex items-center justify-center cursor-pointer"
-                  style={{ background: 'rgba(255,255,255,0.04)', color: '#a1a1aa' }}
-                >
-                  <Pencil size={14} />
-                </button>
-                <button
-                  onClick={() => handleDelete(post)}
-                  aria-label="Excluir"
-                  className="w-9 h-9 rounded-lg flex items-center justify-center cursor-pointer"
-                  style={{ background: 'rgba(248,113,113,0.08)', color: '#f87171' }}
-                >
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {paginatedPosts.map((post) => (
+              <AdminPostCard key={post.id} post={post} onEdit={openEdit} onDelete={handleDelete} />
+            ))}
+          </div>
+          <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+        </>
       )}
 
       {showForm && (
