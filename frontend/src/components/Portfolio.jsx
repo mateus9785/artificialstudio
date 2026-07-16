@@ -60,7 +60,6 @@ const PROJECT_BRIEFS = [
     category: 'SaaS de Logística',
     description:
       'Plataforma completa de rastreamento e gestão de entregas com dashboard em tempo real, integrações de API e automação de notificações.',
-    tags: ['React', 'Node.js', 'PostgreSQL'],
     icon: '🚚',
   },
   {
@@ -68,7 +67,6 @@ const PROJECT_BRIEFS = [
     category: 'Landing Page Premium',
     description:
       'Landing page de alto impacto para lançamento de produto com A/B testing integrado, vídeo hero e funil de conversão otimizado.',
-    tags: ['Next.js', 'Framer Motion', 'Analytics'],
     icon: '⚡',
   },
   {
@@ -76,7 +74,6 @@ const PROJECT_BRIEFS = [
     category: 'Dashboard Comercial',
     description:
       'Dashboard analítico completo para equipes de vendas com métricas em tempo real, IA de previsão de receita e relatórios automatizados.',
-    tags: ['TypeScript', 'D3.js', 'OpenAI'],
     icon: '📊',
   },
   {
@@ -84,7 +81,6 @@ const PROJECT_BRIEFS = [
     category: 'Plataforma MedTech',
     description:
       'Sistema de agendamento e telemedicina com IA de triagem, prontuário eletrônico e integração com planos de saúde.',
-    tags: ['React Native', 'FastAPI', 'FHIR'],
     icon: '🏥',
   },
   {
@@ -92,7 +88,6 @@ const PROJECT_BRIEFS = [
     category: 'Plataforma de Ensino Online',
     description:
       'Ambiente de aprendizagem gamificado com trilhas personalizadas por IA, videoaulas interativas e certificação automática.',
-    tags: ['Vue.js', 'Django', 'Redis'],
     icon: '🎓',
   },
   {
@@ -100,7 +95,6 @@ const PROJECT_BRIEFS = [
     category: 'App de Gestão Financeira',
     description:
       'Aplicativo de controle financeiro pessoal com categorização automática de gastos via IA, metas inteligentes e open finance.',
-    tags: ['React Native', 'Node.js', 'Open Finance'],
     icon: '💳',
   },
   {
@@ -108,7 +102,6 @@ const PROJECT_BRIEFS = [
     category: 'Portal Imobiliário',
     description:
       'Marketplace imobiliário com tour virtual 3D, matching de imóveis por IA e assinatura digital de contratos.',
-    tags: ['Next.js', 'Three.js', 'DocuSign'],
     icon: '🏠',
   },
   {
@@ -116,7 +109,6 @@ const PROJECT_BRIEFS = [
     category: 'App de Delivery',
     description:
       'Plataforma de delivery multi-restaurante com roteirização inteligente de entregadores e previsão de tempo por IA.',
-    tags: ['Flutter', 'GraphQL', 'Google Maps API'],
     icon: '🍔',
   },
   {
@@ -124,7 +116,6 @@ const PROJECT_BRIEFS = [
     category: 'SaaS Jurídico',
     description:
       'Assistente jurídico com IA para análise de contratos, geração de petições e monitoramento de prazos processuais.',
-    tags: ['Python', 'LangChain', 'PostgreSQL'],
     icon: '⚖️',
   },
   {
@@ -132,7 +123,6 @@ const PROJECT_BRIEFS = [
     category: 'App de Treino Personalizado',
     description:
       'Aplicativo de treino com planos gerados por IA, acompanhamento de evolução e integração com wearables.',
-    tags: ['React Native', 'TensorFlow', 'HealthKit'],
     icon: '💪',
   },
   {
@@ -140,7 +130,6 @@ const PROJECT_BRIEFS = [
     category: 'Gestão de Eventos',
     description:
       'Plataforma completa de eventos com venda de ingressos, check-in por QR Code e dashboard de vendas em tempo real.',
-    tags: ['React', 'Stripe', 'WebSockets'],
     icon: '🎟️',
   },
   {
@@ -148,7 +137,6 @@ const PROJECT_BRIEFS = [
     category: 'Monitoramento de Energia Solar',
     description:
       'Dashboard de monitoramento de usinas solares com previsão de geração por IA e alertas de manutenção preditiva.',
-    tags: ['Vue.js', 'InfluxDB', 'Grafana'],
     icon: '☀️',
   },
   {
@@ -156,7 +144,6 @@ const PROJECT_BRIEFS = [
     category: 'Plataforma de Recrutamento',
     description:
       'Sistema de recrutamento com triagem de currículos por IA, testes comportamentais e pipeline visual de candidatos.',
-    tags: ['React', 'FastAPI', 'OpenAI'],
     icon: '🧑‍💼',
   },
   {
@@ -164,7 +151,6 @@ const PROJECT_BRIEFS = [
     category: 'App para Pet Shops',
     description:
       'Aplicativo de agendamento para pet shops e clínicas veterinárias com prontuário digital do animal e lembretes automáticos.',
-    tags: ['Flutter', 'Firebase', 'Twilio'],
     icon: '🐾',
   },
   {
@@ -172,7 +158,6 @@ const PROJECT_BRIEFS = [
     category: 'E-commerce de Artesanato',
     description:
       'Marketplace para artesãos locais com vitrine personalizável, checkout otimizado e recomendação de produtos por IA.',
-    tags: ['Shopify', 'React', 'Algolia'],
     icon: '🎨',
   },
   {
@@ -180,7 +165,6 @@ const PROJECT_BRIEFS = [
     category: 'Plataforma de Viagens',
     description:
       'Sistema de reservas de viagens com comparador de preços em tempo real e chatbot de suporte multilíngue.',
-    tags: ['Next.js', 'Node.js', 'i18n'],
     icon: '✈️',
   },
   {
@@ -188,7 +172,6 @@ const PROJECT_BRIEFS = [
     category: 'Gestão de Obras',
     description:
       'Plataforma de gestão de obras com cronograma físico-financeiro, diário de obra digital e relatórios fotográficos.',
-    tags: ['React', 'Node.js', 'AWS S3'],
     icon: '🏗️',
   },
   {
@@ -196,7 +179,6 @@ const PROJECT_BRIEFS = [
     category: 'Sistema para Restaurantes',
     description:
       'Sistema de gestão para restaurantes com comanda digital, controle de estoque inteligente e integração com iFood.',
-    tags: ['React', 'PostgreSQL', 'iFood API'],
     icon: '🍽️',
   },
   {
@@ -204,7 +186,6 @@ const PROJECT_BRIEFS = [
     category: 'Plataforma de Streaming',
     description:
       'Plataforma de streaming de conteúdo com player adaptativo, recomendação por IA e painel de monetização para criadores.',
-    tags: ['Next.js', 'AWS MediaLive', 'Stripe'],
     icon: '🎬',
   },
   {
@@ -212,7 +193,6 @@ const PROJECT_BRIEFS = [
     category: 'Monitoramento Agrícola',
     description:
       'Plataforma de agricultura de precisão com sensores IoT, previsão de safra por IA e mapas de calor de plantio.',
-    tags: ['Python', 'IoT', 'Machine Learning'],
     icon: '🌾',
   },
   {
@@ -220,7 +200,6 @@ const PROJECT_BRIEFS = [
     category: 'Plataforma de Segurança Digital',
     description:
       'Sistema de autenticação multifator e gestão de identidades com detecção de fraude por IA e monitoramento contínuo de acessos.',
-    tags: ['Node.js', 'OAuth2', 'Redis'],
     icon: '🔐',
   },
   {
@@ -228,7 +207,6 @@ const PROJECT_BRIEFS = [
     category: 'Insurtech de Sinistros',
     description:
       'Automação do processo de sinistros com análise de documentos por IA, aprovação inteligente e acompanhamento em tempo real.',
-    tags: ['Python', 'OCR', 'AWS'],
     icon: '🛡️',
   },
   {
@@ -236,7 +214,6 @@ const PROJECT_BRIEFS = [
     category: 'Distribuição Musical',
     description:
       'Distribuição de música para streamings com relatórios de royalties automatizados e análise de audiência por IA.',
-    tags: ['Next.js', 'Node.js', 'Spotify API'],
     icon: '🎵',
   },
   {
@@ -244,7 +221,6 @@ const PROJECT_BRIEFS = [
     category: 'Plataforma de Torneios eSports',
     description:
       'Sistema de gestão de campeonatos com chaveamento automático, transmissão ao vivo integrada e ranking de jogadores.',
-    tags: ['React', 'WebRTC', 'Socket.io'],
     icon: '🎮',
   },
   {
@@ -252,7 +228,6 @@ const PROJECT_BRIEFS = [
     category: 'Gestão de Espaços Compartilhados',
     description:
       'Plataforma de reserva de salas e estações de trabalho com controle de acesso inteligente e faturamento automático.',
-    tags: ['Vue.js', 'Stripe', 'IoT'],
     icon: '🏢',
   },
   {
@@ -260,7 +235,6 @@ const PROJECT_BRIEFS = [
     category: 'App de Lavanderia sob Demanda',
     description:
       'Aplicativo de lavanderia com coleta e entrega agendada, rastreamento de pedidos e pagamento integrado.',
-    tags: ['Flutter', 'Firebase', 'Stripe'],
     icon: '🧺',
   },
   {
@@ -268,7 +242,6 @@ const PROJECT_BRIEFS = [
     category: 'Locação de Veículos',
     description:
       'Sistema de locação de frotas com check-in digital, rastreamento por GPS e manutenção preditiva por IA.',
-    tags: ['React', 'Node.js', 'GPS Tracking'],
     icon: '🚗',
   },
   {
@@ -276,7 +249,6 @@ const PROJECT_BRIEFS = [
     category: 'App de Caronas Corporativas',
     description:
       'Aplicativo de caronas compartilhadas para empresas com otimização de rotas por IA e relatório de redução de carbono.',
-    tags: ['React Native', 'Google Maps API', 'Node.js'],
     icon: '🚙',
   },
   {
@@ -284,7 +256,6 @@ const PROJECT_BRIEFS = [
     category: 'Gestão Inteligente de Estacionamentos',
     description:
       'Plataforma de estacionamentos com reserva de vagas, reconhecimento de placas por visão computacional e pagamento automático.',
-    tags: ['Python', 'OpenCV', 'IoT'],
     icon: '🅿️',
   },
   {
@@ -292,7 +263,6 @@ const PROJECT_BRIEFS = [
     category: 'Gestão de Armazéns',
     description:
       'Sistema de gestão de estoque com robótica de separação, previsão de demanda por IA e rastreabilidade completa.',
-    tags: ['React', 'Node.js', 'RFID'],
     icon: '📦',
   },
   {
@@ -300,7 +270,6 @@ const PROJECT_BRIEFS = [
     category: 'Assinaturas Personalizadas',
     description:
       'Plataforma de clubes de assinatura com curadoria por IA, gestão de recorrência e logística integrada.',
-    tags: ['Next.js', 'Stripe', 'PostgreSQL'],
     icon: '🎁',
   },
   {
@@ -308,7 +277,6 @@ const PROJECT_BRIEFS = [
     category: 'Telepsicologia e Bem-estar Mental',
     description:
       'Plataforma de terapia online com agendamento seguro, prontuário criptografado e triagem inicial por IA.',
-    tags: ['React Native', 'WebRTC', 'HIPAA'],
     icon: '🧠',
   },
   {
@@ -316,7 +284,6 @@ const PROJECT_BRIEFS = [
     category: 'App de Nutrição Personalizada',
     description:
       'Aplicativo de planejamento alimentar com cardápios gerados por IA, lista de compras automática e acompanhamento nutricional.',
-    tags: ['Flutter', 'TensorFlow', 'Firebase'],
     icon: '🥗',
   },
   {
@@ -324,7 +291,6 @@ const PROJECT_BRIEFS = [
     category: 'Cuidados para Idosos',
     description:
       'Sistema de gestão de cuidadores com monitoramento de saúde remoto, alertas de emergência e comunicação familiar.',
-    tags: ['React', 'Node.js', 'IoT Wearables'],
     icon: '🧓',
   },
   {
@@ -332,7 +298,6 @@ const PROJECT_BRIEFS = [
     category: 'Gestão de Creches e Escolinhas',
     description:
       'Plataforma de gestão escolar infantil com check-in dos pais, relatórios diários e comunicação em tempo real.',
-    tags: ['Vue.js', 'Firebase', 'Push Notifications'],
     icon: '🧸',
   },
   {
@@ -340,7 +305,6 @@ const PROJECT_BRIEFS = [
     category: 'Marketplace para Casamentos',
     description:
       'Marketplace que conecta noivos a fornecedores com orçamentos automáticos, checklist inteligente e gestão de contratos.',
-    tags: ['Next.js', 'React', 'Stripe'],
     icon: '💍',
   },
   {
@@ -348,7 +312,6 @@ const PROJECT_BRIEFS = [
     category: 'Plataforma para Fotógrafos Profissionais',
     description:
       'Sistema de galeria online e venda de fotos com entrega digital protegida e agendamento de sessões.',
-    tags: ['React', 'AWS S3', 'Stripe'],
     icon: '📸',
   },
   {
@@ -356,7 +319,6 @@ const PROJECT_BRIEFS = [
     category: 'Mudanças e Logística Residencial',
     description:
       'Aplicativo de mudanças com cotação instantânea, rastreamento da transportadora e inventário digital dos itens.',
-    tags: ['React Native', 'Node.js', 'Google Maps API'],
     icon: '📦',
   },
   {
@@ -364,7 +326,6 @@ const PROJECT_BRIEFS = [
     category: 'Marketplace de Prestadores de Serviço',
     description:
       'Marketplace de serviços residenciais com matching por IA, avaliação de profissionais e pagamento seguro por etapa.',
-    tags: ['Next.js', 'PostgreSQL', 'Stripe Connect'],
     icon: '🔧',
   },
   {
@@ -372,7 +333,6 @@ const PROJECT_BRIEFS = [
     category: 'Faxina e Limpeza sob Demanda',
     description:
       'Plataforma de contratação de diaristas com agenda recorrente, avaliação de qualidade e pagamento automatizado.',
-    tags: ['Flutter', 'Firebase', 'Stripe'],
     icon: '🧹',
   },
   {
@@ -380,7 +340,6 @@ const PROJECT_BRIEFS = [
     category: 'Gestão de Ligas Esportivas Amadoras',
     description:
       'Sistema de gestão de campeonatos amadores com tabela automática, estatísticas dos jogadores e transmissão de jogos.',
-    tags: ['React', 'Node.js', 'WebSockets'],
     icon: '🏆',
   },
   {
@@ -388,7 +347,6 @@ const PROJECT_BRIEFS = [
     category: 'Bilheteria Digital para Atrações',
     description:
       'Sistema de bilheteria digital com filas virtuais, tour guiado por realidade aumentada e analytics de visitantes.',
-    tags: ['Next.js', 'AR.js', 'Stripe'],
     icon: '🎫',
   },
   {
@@ -396,7 +354,6 @@ const PROJECT_BRIEFS = [
     category: 'Gestão de Bibliotecas',
     description:
       'Plataforma de gestão de acervo com empréstimos digitais, recomendação de leitura por IA e reservas online.',
-    tags: ['Django', 'PostgreSQL', 'Elasticsearch'],
     icon: '📚',
   },
   {
@@ -404,7 +361,6 @@ const PROJECT_BRIEFS = [
     category: 'Plataforma de Doações para ONGs',
     description:
       'Sistema de arrecadação para ONGs com doações recorrentes, transparência de impacto e relatórios automáticos para doadores.',
-    tags: ['React', 'Stripe', 'Node.js'],
     icon: '🤲',
   },
   {
@@ -412,7 +368,6 @@ const PROJECT_BRIEFS = [
     category: 'Financiamento Coletivo',
     description:
       'Plataforma de crowdfunding com verificação de projetos por IA, gestão de recompensas e pagamentos escalonados.',
-    tags: ['Next.js', 'Stripe', 'PostgreSQL'],
     icon: '🚀',
   },
   {
@@ -420,7 +375,6 @@ const PROJECT_BRIEFS = [
     category: 'Marketplace de Freelancers',
     description:
       'Marketplace de talentos freelancers com matching inteligente, contratos digitais e sistema de escrow de pagamentos.',
-    tags: ['React', 'Node.js', 'Stripe Connect'],
     icon: '💼',
   },
   {
@@ -428,7 +382,6 @@ const PROJECT_BRIEFS = [
     category: 'Marketing de Influência',
     description:
       'Sistema de gestão de campanhas com influenciadores, análise de ROI por IA e relatórios de engajamento em tempo real.',
-    tags: ['Next.js', 'Instagram API', 'D3.js'],
     icon: '📱',
   },
   {
@@ -436,7 +389,6 @@ const PROJECT_BRIEFS = [
     category: 'Hospedagem de Podcasts',
     description:
       'Plataforma de hospedagem e distribuição de podcasts com transcrição automática por IA e monetização integrada.',
-    tags: ['Node.js', 'AWS S3', 'Whisper API'],
     icon: '🎙️',
   },
   {
@@ -444,7 +396,6 @@ const PROJECT_BRIEFS = [
     category: 'Plataforma de Newsletters Premium',
     description:
       'Sistema de criação e monetização de newsletters com segmentação inteligente e editor visual de alto desempenho.',
-    tags: ['React', 'Node.js', 'SendGrid'],
     icon: '📰',
   },
   {
@@ -452,7 +403,6 @@ const PROJECT_BRIEFS = [
     category: 'Produtos Personalizados sob Demanda',
     description:
       'Sistema de print-on-demand com mockup gerado por IA, integração com gráficas parceiras e checkout otimizado.',
-    tags: ['Next.js', 'Shopify', 'AI Image Generation'],
     icon: '🖨️',
   },
   {
@@ -460,7 +410,6 @@ const PROJECT_BRIEFS = [
     category: 'Marketplace de Impressão 3D',
     description:
       'Marketplace que conecta criadores a impressoras 3D parceiras com orçamento automático e rastreamento de produção.',
-    tags: ['React', 'Node.js', 'Slicer API'],
     icon: '🧵',
   },
   {
@@ -468,7 +417,6 @@ const PROJECT_BRIEFS = [
     category: 'Serviços com Drones',
     description:
       'Sistema de agendamento de serviços aéreos com drones, geração de mapas 3D e relatórios de inspeção automatizados.',
-    tags: ['Python', 'Computer Vision', 'AWS'],
     icon: '🛸',
   },
   {
@@ -476,7 +424,6 @@ const PROJECT_BRIEFS = [
     category: 'Gestão de Resíduos e Reciclagem',
     description:
       'Plataforma de logística reversa com roteirização de coleta, rastreabilidade de materiais e relatórios de impacto ambiental.',
-    tags: ['React', 'Node.js', 'IoT Sensors'],
     icon: '♻️',
   },
   {
@@ -484,7 +431,6 @@ const PROJECT_BRIEFS = [
     category: 'Monitoramento de Consumo de Água',
     description:
       'Dashboard de monitoramento de consumo hídrico com detecção de vazamentos por IA e alertas em tempo real.',
-    tags: ['Vue.js', 'InfluxDB', 'IoT'],
     icon: '💧',
   },
   {
@@ -492,7 +438,6 @@ const PROJECT_BRIEFS = [
     category: 'Automação Residencial',
     description:
       'Sistema de automação para casas inteligentes com controle por voz, rotinas por IA e monitoramento de energia.',
-    tags: ['React Native', 'MQTT', 'Home Assistant'],
     icon: '🏡',
   },
   {
@@ -500,7 +445,6 @@ const PROJECT_BRIEFS = [
     category: 'Rede de Carregamento Elétrico',
     description:
       'Plataforma de gestão de estações de recarga com reserva antecipada, pagamento integrado e monitoramento remoto.',
-    tags: ['Node.js', 'IoT', 'Stripe'],
     icon: '🔌',
   },
   {
@@ -508,7 +452,6 @@ const PROJECT_BRIEFS = [
     category: 'Bicicletas Compartilhadas',
     description:
       'Plataforma de bike sharing com desbloqueio via QR Code, geofencing inteligente e manutenção preditiva da frota.',
-    tags: ['React Native', 'GPS', 'Node.js'],
     icon: '🚲',
   },
   {
@@ -516,7 +459,6 @@ const PROJECT_BRIEFS = [
     category: 'Rastreamento de Transporte Público',
     description:
       'Aplicativo de rastreamento de ônibus e metrô em tempo real com previsão de chegada por IA e rotas otimizadas.',
-    tags: ['React Native', 'GraphQL', 'GTFS'],
     icon: '🚌',
   },
   {
@@ -524,7 +466,6 @@ const PROJECT_BRIEFS = [
     category: 'Seguro Agrícola Paramétrico',
     description:
       'Plataforma de seguro agrícola com dados de satélite, previsão climática por IA e pagamento automático de sinistros.',
-    tags: ['Python', 'Satellite Data', 'Machine Learning'],
     icon: '🌦️',
   },
   {
@@ -532,7 +473,6 @@ const PROJECT_BRIEFS = [
     category: 'Rastreabilidade de Cadeia de Suprimentos',
     description:
       'Sistema de rastreabilidade com blockchain para cadeia de suprimentos, garantindo transparência da origem ao consumidor.',
-    tags: ['React', 'Blockchain', 'Node.js'],
     icon: '🔗',
   },
   {
@@ -540,7 +480,6 @@ const PROJECT_BRIEFS = [
     category: 'Monitoramento de Câmaras Frias',
     description:
       'Plataforma de monitoramento de temperatura para câmaras frias com alertas em tempo real e histórico de conformidade.',
-    tags: ['IoT', 'InfluxDB', 'Grafana'],
     icon: '❄️',
   },
   {
@@ -548,7 +487,6 @@ const PROJECT_BRIEFS = [
     category: 'Gestão de Franquias',
     description:
       'Plataforma de gestão multi-unidades para franquias com dashboard consolidado e padronização de processos.',
-    tags: ['React', 'Node.js', 'PostgreSQL'],
     icon: '🏬',
   },
   {
@@ -556,7 +494,6 @@ const PROJECT_BRIEFS = [
     category: 'Fidelidade e Recompensas',
     description:
       'Sistema de programa de fidelidade com gamificação, recomendação de recompensas por IA e carteira digital de pontos.',
-    tags: ['Next.js', 'Node.js', 'Redis'],
     icon: '⭐',
   },
   {
@@ -564,7 +501,6 @@ const PROJECT_BRIEFS = [
     category: 'Vale-Presentes Digitais',
     description:
       'Sistema de emissão e resgate de vale-presentes digitais com integração multi-lojista e antifraude por IA.',
-    tags: ['React', 'Node.js', 'Stripe'],
     icon: '🎀',
   },
   {
@@ -572,7 +508,6 @@ const PROJECT_BRIEFS = [
     category: 'Agregador de Cupons e Promoções',
     description:
       'Plataforma agregadora de cupons com curadoria automática de ofertas e notificações personalizadas por IA.',
-    tags: ['Next.js', 'Web Scraping', 'PostgreSQL'],
     icon: '🏷️',
   },
   {
@@ -580,7 +515,6 @@ const PROJECT_BRIEFS = [
     category: 'Gestão de Reputação Online',
     description:
       'Plataforma de monitoramento de avaliações com análise de sentimento por IA e resposta automatizada a clientes.',
-    tags: ['Python', 'NLP', 'React'],
     icon: '📣',
   },
   {
@@ -588,7 +522,6 @@ const PROJECT_BRIEFS = [
     category: 'Agendamento Universal',
     description:
       'Plataforma white-label de agendamento online com sincronização de calendários e lembretes automáticos via WhatsApp.',
-    tags: ['React', 'Node.js', 'WhatsApp API'],
     icon: '📅',
   },
   {
@@ -596,7 +529,6 @@ const PROJECT_BRIEFS = [
     category: 'Gestão de Equipes de Campo',
     description:
       'Sistema de gestão de técnicos externos com roteirização inteligente, checklist digital e assinatura eletrônica de OS.',
-    tags: ['React Native', 'Node.js', 'Google Maps API'],
     icon: '🛠️',
   },
   {
@@ -604,7 +536,6 @@ const PROJECT_BRIEFS = [
     category: 'Execução de Manufatura',
     description:
       'Sistema MES para chão de fábrica com monitoramento de produção em tempo real e detecção de gargalos por IA.',
-    tags: ['Python', 'IoT', 'Kafka'],
     icon: '🏭',
   },
   {
@@ -612,7 +543,6 @@ const PROJECT_BRIEFS = [
     category: 'Controle de Qualidade por Visão Computacional',
     description:
       'Sistema de inspeção visual automatizada com detecção de defeitos por IA em linhas de produção industrial.',
-    tags: ['Python', 'OpenCV', 'TensorFlow'],
     icon: '🔍',
   },
   {
@@ -620,7 +550,6 @@ const PROJECT_BRIEFS = [
     category: 'Folha de Pagamento',
     description:
       'Sistema de folha de pagamento com cálculo automático de encargos, holerites digitais e conformidade fiscal.',
-    tags: ['Node.js', 'PostgreSQL', 'PDF Generation'],
     icon: '💰',
   },
   {
@@ -628,7 +557,6 @@ const PROJECT_BRIEFS = [
     category: 'Gestão de Despesas Corporativas',
     description:
       'Plataforma de gestão de despesas com captura de notas fiscais por IA, aprovação em cadeia e cartões virtuais.',
-    tags: ['React', 'OCR', 'Stripe Issuing'],
     icon: '🧾',
   },
   {
@@ -636,7 +564,6 @@ const PROJECT_BRIEFS = [
     category: 'Compras Corporativas',
     description:
       'Sistema de procurement B2B com cotação automática entre fornecedores e aprovação de compras por workflow.',
-    tags: ['Next.js', 'Node.js', 'PostgreSQL'],
     icon: '🛒',
   },
   {
@@ -644,7 +571,6 @@ const PROJECT_BRIEFS = [
     category: 'Marketplace B2B de Fornecedores',
     description:
       'Marketplace que conecta indústrias a fornecedores homologados com negociação integrada e gestão de contratos.',
-    tags: ['React', 'GraphQL', 'PostgreSQL'],
     icon: '🤝',
   },
   {
@@ -652,7 +578,6 @@ const PROJECT_BRIEFS = [
     category: 'Tradução em Tempo Real',
     description:
       'Sistema de tradução simultânea para reuniões com IA multilíngue e transcrição automática de atas.',
-    tags: ['Python', 'WebRTC', 'OpenAI'],
     icon: '🌐',
   },
   {
@@ -660,7 +585,6 @@ const PROJECT_BRIEFS = [
     category: 'Atendimento ao Cliente',
     description:
       'Sistema de helpdesk com triagem de tickets por IA, base de conhecimento inteligente e SLA automatizado.',
-    tags: ['React', 'Node.js', 'Elasticsearch'],
     icon: '🎧',
   },
   {
@@ -668,7 +592,6 @@ const PROJECT_BRIEFS = [
     category: 'Pesquisas e Feedback',
     description:
       'Sistema de pesquisas de satisfação com análise de sentimento por IA e dashboards de NPS em tempo real.',
-    tags: ['Vue.js', 'D3.js', 'NLP'],
     icon: '📋',
   },
   {
@@ -676,7 +599,6 @@ const PROJECT_BRIEFS = [
     category: 'Treinamento Corporativo',
     description:
       'LMS corporativo com trilhas de capacitação personalizadas por IA e certificação de competências.',
-    tags: ['React', 'Django', 'Redis'],
     icon: '🎯',
   },
   {
@@ -684,7 +606,6 @@ const PROJECT_BRIEFS = [
     category: 'Colaboração Remota',
     description:
       'Plataforma de colaboração para equipes remotas com quadros visuais, videochamadas integradas e automação de tarefas.',
-    tags: ['React', 'WebRTC', 'Socket.io'],
     icon: '🧩',
   },
   {
@@ -692,7 +613,6 @@ const PROJECT_BRIEFS = [
     category: 'Controle de Ponto e Produtividade',
     description:
       'Aplicativo de controle de jornada com reconhecimento facial, geolocalização e relatórios de produtividade por IA.',
-    tags: ['React Native', 'Face Recognition', 'Node.js'],
     icon: '⏱️',
   },
   {
@@ -700,7 +620,6 @@ const PROJECT_BRIEFS = [
     category: 'Faturamento Recorrente',
     description:
       'Sistema de faturamento e cobrança recorrente com régua de cobrança automática e conciliação bancária inteligente.',
-    tags: ['Node.js', 'PostgreSQL', 'Open Banking'],
     icon: '🧮',
   },
   {
@@ -708,7 +627,6 @@ const PROJECT_BRIEFS = [
     category: 'Assistente de Declaração Fiscal',
     description:
       'Plataforma que automatiza a apuração de impostos com leitura de documentos por IA e simulação de cenários tributários.',
-    tags: ['Python', 'OCR', 'Machine Learning'],
     icon: '📑',
   },
   {
@@ -716,7 +634,6 @@ const PROJECT_BRIEFS = [
     category: 'Robo-Advisor de Investimentos',
     description:
       'Plataforma de gestão de investimentos com carteiras recomendadas por IA e rebalanceamento automático de ativos.',
-    tags: ['Python', 'React', 'Financial APIs'],
     icon: '📈',
   },
   {
@@ -724,7 +641,6 @@ const PROJECT_BRIEFS = [
     category: 'Gestão de Portfólio de Ativos',
     description:
       'Dashboard de acompanhamento de portfólio com consolidação multi-corretora e alertas de performance por IA.',
-    tags: ['React', 'Node.js', 'WebSockets'],
     icon: '💹',
   },
   {
@@ -732,7 +648,6 @@ const PROJECT_BRIEFS = [
     category: 'Planejador de Refeições',
     description:
       'Aplicativo de planejamento semanal de refeições com sugestões por IA e integração com supermercados parceiros.',
-    tags: ['Flutter', 'Firebase', 'Machine Learning'],
     icon: '🍱',
   },
   {
@@ -740,7 +655,6 @@ const PROJECT_BRIEFS = [
     category: 'Delivery de Supermercado',
     description:
       'Aplicativo de compras de supermercado com entrega expressa, lista inteligente e recomendação de produtos por IA.',
-    tags: ['React Native', 'Node.js', 'Google Maps API'],
     icon: '🛍️',
   },
   {
@@ -748,7 +662,6 @@ const PROJECT_BRIEFS = [
     category: 'Kits de Refeição por Assinatura',
     description:
       'Sistema de assinatura de kits de refeição com curadoria de receitas, logística refrigerada e gestão de recorrência.',
-    tags: ['Next.js', 'Stripe', 'Route Optimization'],
     icon: '👨‍🍳',
   },
   {
@@ -756,7 +669,6 @@ const PROJECT_BRIEFS = [
     category: 'Clube de Assinatura de Vinhos',
     description:
       'Plataforma de clube de vinhos com curadoria por sommelier virtual, conteúdo educativo e entregas mensais.',
-    tags: ['React', 'Stripe', 'PostgreSQL'],
     icon: '🍷',
   },
   {
@@ -764,7 +676,6 @@ const PROJECT_BRIEFS = [
     category: 'Fidelidade para Cafeterias',
     description:
       'Aplicativo de fidelidade para redes de cafeteria com carteira digital, pedidos antecipados e ofertas personalizadas.',
-    tags: ['React Native', 'Firebase', 'Stripe'],
     icon: '☕',
   },
   {
@@ -772,7 +683,6 @@ const PROJECT_BRIEFS = [
     category: 'Agendamento para Salões',
     description:
       'Sistema de agendamento para salões de beleza com lembretes automáticos, gestão de comissões e catálogo de serviços.',
-    tags: ['Vue.js', 'Node.js', 'WhatsApp API'],
     icon: '💇',
   },
   {
@@ -780,7 +690,6 @@ const PROJECT_BRIEFS = [
     category: 'Gestão para Spas',
     description:
       'Plataforma de gestão para spas e centros de bem-estar com reserva online, pacotes personalizados e CRM de clientes.',
-    tags: ['React', 'Node.js', 'PostgreSQL'],
     icon: '🧖',
   },
   {
@@ -788,7 +697,6 @@ const PROJECT_BRIEFS = [
     category: 'Gestão para Clínicas Odontológicas',
     description:
       'Plataforma de gestão clínica com prontuário digital, agenda inteligente e lembretes de retorno automatizados.',
-    tags: ['React', 'FastAPI', 'PostgreSQL'],
     icon: '🦷',
   },
   {
@@ -796,7 +704,6 @@ const PROJECT_BRIEFS = [
     category: 'E-commerce de Óculos',
     description:
       'Loja virtual de óculos com prova virtual por realidade aumentada e recomendação de armação por IA.',
-    tags: ['Next.js', 'AR.js', 'Shopify'],
     icon: '👓',
   },
   {
@@ -804,7 +711,6 @@ const PROJECT_BRIEFS = [
     category: 'Marketplace de Moda de Segunda Mão',
     description:
       'Marketplace de moda circular com autenticação de peças por IA, precificação inteligente e logística reversa integrada.',
-    tags: ['React', 'Node.js', 'Computer Vision'],
     icon: '👗',
   },
   {
@@ -812,7 +718,6 @@ const PROJECT_BRIEFS = [
     category: 'Marketplace de Tênis de Colecionador',
     description:
       'Marketplace especializado em sneakers com autenticação por IA, leilões em tempo real e escrow de pagamento.',
-    tags: ['Next.js', 'WebSockets', 'Stripe Connect'],
     icon: '👟',
   },
   {
@@ -820,7 +725,6 @@ const PROJECT_BRIEFS = [
     category: 'Configurador de Móveis Personalizados',
     description:
       'Plataforma de personalização de móveis sob medida com visualização 3D em tempo real e orçamento instantâneo.',
-    tags: ['Three.js', 'React', 'WebGL'],
     icon: '🛋️',
   },
   {
@@ -828,7 +732,6 @@ const PROJECT_BRIEFS = [
     category: 'Design de Interiores com IA',
     description:
       'Aplicativo que gera projetos de decoração por IA a partir de fotos do ambiente, com lista de compras integrada.',
-    tags: ['React Native', 'Generative AI', 'AR'],
     icon: '🖼️',
   },
   {
@@ -836,7 +739,6 @@ const PROJECT_BRIEFS = [
     category: 'Orçamentos para Reformas',
     description:
       'Plataforma que conecta proprietários a empreiteiros com orçamentos comparativos e acompanhamento de obra por fotos.',
-    tags: ['Next.js', 'Node.js', 'AWS S3'],
     icon: '🧱',
   },
   {
@@ -844,7 +746,6 @@ const PROJECT_BRIEFS = [
     category: 'Marketplace de Aulas Particulares',
     description:
       'Marketplace de professores particulares com matching por IA, videoaulas integradas e pagamento por sessão.',
-    tags: ['React', 'WebRTC', 'Stripe'],
     icon: '📖',
   },
   {
@@ -852,7 +753,6 @@ const PROJECT_BRIEFS = [
     category: 'Aprendizado de Idiomas com IA',
     description:
       'Aplicativo de idiomas com tutor conversacional por IA, correção de pronúncia em tempo real e trilha adaptativa.',
-    tags: ['React Native', 'Speech Recognition', 'OpenAI'],
     icon: '🗣️',
   },
 ]
@@ -971,29 +871,12 @@ function TiltCard({ project }) {
           {project.description}
         </p>
 
-        {/* Tags */}
-        <div className="flex flex-wrap gap-2 mb-5">
-          {project.tags.map((tag) => (
-            <span
-              key={tag}
-              className="px-2.5 py-1 rounded-md text-xs font-medium"
-              style={{
-                background: 'rgba(255,255,255,0.05)',
-                border: '1px solid rgba(255,255,255,0.08)',
-                color: '#71717a',
-              }}
-            >
-              {tag}
-            </span>
-          ))}
-        </div>
-
         {/* Link */}
         <div
           className="flex items-center gap-1.5 text-sm font-medium transition-all duration-200"
           style={{ color: hovered ? project.accent : '#52525b' }}
         >
-          Ver case completo
+          Ver conceito
           <ArrowUpRight
             size={14}
             className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
@@ -1041,7 +924,7 @@ export default function Portfolio() {
             }}
           >
             <ExternalLink size={11} />
-            Cases de Sucesso
+            Portfólio de Soluções
           </div>
           <h2
             className="font-bold mb-4"
@@ -1051,10 +934,11 @@ export default function Portfolio() {
               letterSpacing: '-0.8px',
             }}
           >
-            Nossos trabalhos anteriores
+            O que podemos construir para o seu negócio
           </h2>
-          <p style={{ color: '#71717a', fontSize: '1.05rem', maxWidth: '480px', margin: '0 auto' }}>
-            Projetos que combinam design de alto nível com performance real.
+          <p style={{ color: '#71717a', fontSize: '1.05rem', maxWidth: '520px', margin: '0 auto' }}>
+            Conceitos de produtos que mostram como unimos design de alto nível a performance real — o padrão que
+            aplicamos em cada projeto que desenvolvemos.
           </p>
         </div>
 

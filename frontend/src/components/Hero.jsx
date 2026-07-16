@@ -239,8 +239,8 @@ export default function Hero() {
             fontSize: 'clamp(1rem, 2.5vw, 1.2rem)',
           }}
         >
-          Automatize seu atendimento e transforme visitantes em vendas.{' '}
-          <span style={{ color: '#a1a1aa' }}>Reduza custos e multiplique sua conversão.</span>
+          Sites, automações e sistemas construídos com IA para o seu negócio.{' '}
+          <span style={{ color: '#a1a1aa' }}>Mais rápido para lançar, menos custo e mais conversão.</span>
         </p>
 
         {/* CTA buttons */}
@@ -298,7 +298,7 @@ export default function Hero() {
           {[
             { value: '3×', label: 'mais conversão' },
             { value: '60%', label: 'menos custo' },
-            { value: '24/7', label: 'atendimento automatizado' },
+            { value: '50%', label: 'mais rápido para entregar' },
           ].map(({ value, label }) => (
             <div key={label} className="flex flex-col items-center gap-1">
               <span className="text-2xl font-bold">
