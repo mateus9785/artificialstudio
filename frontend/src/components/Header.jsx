@@ -100,6 +100,15 @@ export default function Header() {
             )
           })}
           <span className="nav-indicator" style={indicatorStyle} />
+          <a
+            href="/sobre"
+            className="text-sm transition-colors duration-200"
+            style={{ color: '#a1a1aa' }}
+            onMouseEnter={(e) => (e.target.style.color = '#22d3ee')}
+            onMouseLeave={(e) => (e.target.style.color = '#a1a1aa')}
+          >
+            Sobre
+          </a>
         </nav>
 
         {/* Mobile menu button */}
@@ -135,6 +144,14 @@ export default function Header() {
               {item}
             </a>
           ))}
+          <a
+            href="/sobre"
+            className="animate-fade-in-up text-sm py-2"
+            style={{ color: '#a1a1aa', animationDelay: `${NAV_ITEMS.length * 0.06}s` }}
+            onClick={() => setMenuOpen(false)}
+          >
+            Sobre
+          </a>
         </div>
       )}
     </header>

@@ -1,6 +1,7 @@
 import Layout from './Layout'
 import Hero from './components/Hero'
 import Portfolio from './components/Portfolio'
+import Founder from './components/Founder'
 import Blog from './components/Blog'
 
 export default function App() {
@@ -8,6 +9,7 @@ export default function App() {
     <Layout>
       <Hero />
       <Portfolio />
+      <Founder />
       <Blog />
     </Layout>
   )

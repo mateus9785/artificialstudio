@@ -1,17 +1,15 @@
-import { Globe, Link, GitBranch, MessageCircle, Mail } from 'lucide-react'
-
-const SOCIAL_LINKS = [
-  { icon: GitBranch, href: '#', label: 'GitHub' },
-  { icon: Link, href: '#', label: 'LinkedIn' },
-  { icon: Globe, href: '#', label: 'Instagram' },
-  { icon: MessageCircle, href: '#', label: 'Twitter' },
-  { icon: Mail, href: '#', label: 'E-mail' },
-]
-
 const FOOTER_LINKS = {
-  Empresa: ['Sobre nós', 'Equipe', 'Casos de uso', 'Blog'],
-  Serviços: ['Landing Pages', 'SaaS & Dashboards', 'IA de Atendimento', 'Consultoria'],
-  Legal: ['Privacidade', 'Termos de uso', 'Cookies'],
+  Empresa: [
+    { label: 'Sobre nós', href: '/sobre' },
+    { label: 'Casos de uso', href: '#' },
+    { label: 'Blog', href: '/#blog' },
+  ],
+  Serviços: [
+    { label: 'Automações & Web Scraping', href: '/servicos#automacoes-web-scraping' },
+    { label: 'IA de Atendimento', href: '/servicos#ia-atendimento' },
+    { label: 'SaaS & Dashboards', href: '/servicos#saas-dashboards' },
+    { label: 'Landing Pages', href: '/servicos#landing-pages' },
+  ],
 }
 
 export default function Footer() {
@@ -30,7 +28,7 @@ export default function Footer() {
 
       <div className="max-w-7xl mx-auto px-6 pt-16 pb-8">
         {/* Main grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-10 mb-14">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 mb-14">
           {/* Brand */}
           <div className="lg:col-span-2">
             <a href="#" className="flex items-center gap-2 mb-4">
@@ -63,35 +61,6 @@ export default function Footer() {
             <p className="text-sm leading-relaxed mb-6" style={{ color: '#52525b', maxWidth: '280px' }}>
               Transformamos ideias em sistemas de alta conversão com design premium e inteligência artificial.
             </p>
-
-            {/* Social icons */}
-            <div className="flex items-center gap-3">
-              {SOCIAL_LINKS.map(({ icon: Icon, href, label }) => (
-                <a
-                  key={label}
-                  href={href}
-                  aria-label={label}
-                  className="w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-200"
-                  style={{
-                    background: 'rgba(255,255,255,0.04)',
-                    border: '1px solid rgba(255,255,255,0.07)',
-                    color: '#52525b',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = 'rgba(34,211,238,0.3)'
-                    e.currentTarget.style.color = '#22d3ee'
-                    e.currentTarget.style.background = 'rgba(34,211,238,0.06)'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'
-                    e.currentTarget.style.color = '#52525b'
-                    e.currentTarget.style.background = 'rgba(255,255,255,0.04)'
-                  }}
-                >
-                  <Icon size={15} />
-                </a>
-              ))}
-            </div>
           </div>
 
           {/* Links */}
@@ -104,16 +73,16 @@ export default function Footer() {
                 {group}
               </h3>
               <ul className="flex flex-col gap-3">
-                {links.map((link) => (
-                  <li key={link}>
+                {links.map(({ label, href }) => (
+                  <li key={label}>
                     <a
-                      href="#"
+                      href={href}
                       className="text-sm transition-colors duration-200"
                       style={{ color: '#52525b' }}
                       onMouseEnter={(e) => (e.target.style.color = '#a1a1aa')}
                       onMouseLeave={(e) => (e.target.style.color = '#52525b')}
                     >
-                      {link}
+                      {label}
                     </a>
                   </li>
                 ))}
