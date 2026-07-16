@@ -8,7 +8,7 @@ export function useAffiliateGuard() {
   function handleError(err) {
     if (err?.status === 401) {
       clearAffiliateSession()
-      navigate('/indique/login', { replace: true })
+      navigate('/indique', { replace: true, state: { openModal: 'login' } })
       return true
     }
     return false

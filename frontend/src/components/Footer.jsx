@@ -1,4 +1,4 @@
-import { Zap, Globe, Link, GitBranch, MessageCircle, Mail } from 'lucide-react'
+import { Globe, Link, GitBranch, MessageCircle, Mail } from 'lucide-react'
 
 const SOCIAL_LINKS = [
   { icon: GitBranch, href: '#', label: 'GitHub' },
@@ -34,15 +34,7 @@ export default function Footer() {
           {/* Brand */}
           <div className="lg:col-span-2">
             <a href="#" className="flex items-center gap-2 mb-4">
-              <div
-                className="w-8 h-8 rounded-lg flex items-center justify-center"
-                style={{
-                  background: 'linear-gradient(135deg, #0891b2, #7c3aed)',
-                  boxShadow: '0 0 16px rgba(34,211,238,0.25)',
-                }}
-              >
-                <Zap size={16} fill="white" color="white" />
-              </div>
+              <img src="/logo.png" alt="Artificial Studio" className="w-8 h-8 object-contain flex-shrink-0" />
               <span
                 className="text-lg font-semibold"
                 style={{ color: '#f4f4f5', letterSpacing: '-0.3px' }}
@@ -56,7 +48,7 @@ export default function Footer() {
                     backgroundClip: 'text',
                   }}
                 >
-                  Code
+                  Studio
                 </span>
               </span>
             </a>
@@ -128,7 +120,7 @@ export default function Footer() {
           style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}
         >
           <p className="text-xs" style={{ color: '#3f3f46' }}>
-            © {new Date().getFullYear()} ArtificialCode. Todos os direitos reservados.
+            © {new Date().getFullYear()} Artificial Studio. Todos os direitos reservados.
           </p>
           <p className="text-xs" style={{ color: '#3f3f46' }}>
             Feito com ❤️ e inteligência artificial

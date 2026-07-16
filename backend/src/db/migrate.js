@@ -11,11 +11,17 @@ const statements = schema
   .map((s) => s.trim())
   .filter(Boolean)
 
+const IGNORABLE_ERRORS = new Set(['ER_DUP_FIELDNAME', 'ER_DUP_KEYNAME', 'ER_TABLE_EXISTS_ERROR'])
+
 async function migrate() {
   const connection = await pool.getConnection()
   try {
     for (const statement of statements) {
-      await connection.query(statement)
+      try {
+        await connection.query(statement)
+      } catch (err) {
+        if (!IGNORABLE_ERRORS.has(err.code)) throw err
+      }
     }
     console.log(`Migração concluída: ${statements.length} statements aplicados.`)
   } finally {

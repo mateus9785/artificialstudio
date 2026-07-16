@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Lock, Zap } from 'lucide-react'
+import { Lock } from 'lucide-react'
 import { api } from '../../lib/api'
 import { setAdminSession, getAdminToken } from '../../lib/adminAuth'
 
@@ -40,12 +40,7 @@ export default function Login() {
         style={{ background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.08)' }}
       >
         <div className="flex items-center gap-2 mb-8">
-          <div
-            className="w-9 h-9 rounded-lg flex items-center justify-center"
-            style={{ background: 'linear-gradient(135deg, #0891b2, #7c3aed)' }}
-          >
-            <Zap size={18} fill="white" color="white" />
-          </div>
+          <img src="/logo.png" alt="Artificial Studio" className="w-9 h-9 object-contain flex-shrink-0" />
           <span className="text-lg font-semibold" style={{ color: '#f4f4f5' }}>
             Painel administrativo
           </span>

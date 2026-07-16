@@ -1,19 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Send, LogOut, Handshake } from 'lucide-react'
+import { Plus, LogOut, Handshake, Pencil, UserCog } from 'lucide-react'
 import { api } from '../../lib/api'
 import { getAffiliateToken, getAffiliateUser, clearAffiliateSession } from '../../lib/affiliateAuth'
-import { SERVICE_TYPES, STATUS_META } from '../../lib/referralMeta'
+import { STATUS_META } from '../../lib/referralMeta'
 import { useAffiliateGuard } from '../useAffiliateGuard'
-import { inputStyle } from '../formStyles'
-
-const EMPTY_FORM = {
-  contactName: '',
-  companyName: '',
-  contactInfo: '',
-  serviceType: SERVICE_TYPES[0],
-  alreadyNotified: false,
-}
+import NewReferralModal from '../components/NewReferralModal'
+import EditReferralModal from '../components/EditReferralModal'
+import EditProfileModal from '../components/EditProfileModal'
+import NotificationBell from '../components/NotificationBell'
 
 function formatCurrency(value) {
   if (value === null || value === undefined) return '—'
@@ -23,13 +18,13 @@ function formatCurrency(value) {
 export default function Dashboard() {
   const navigate = useNavigate()
   const { handleError } = useAffiliateGuard()
-  const affiliate = getAffiliateUser()
+  const [affiliate, setAffiliate] = useState(getAffiliateUser())
 
   const [referrals, setReferrals] = useState([])
   const [status, setStatus] = useState('loading')
-  const [form, setForm] = useState(EMPTY_FORM)
-  const [saving, setSaving] = useState(false)
-  const [formError, setFormError] = useState('')
+  const [showNewModal, setShowNewModal] = useState(false)
+  const [editingReferral, setEditingReferral] = useState(null)
+  const [showProfileModal, setShowProfileModal] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
 
   function loadReferrals() {
@@ -48,30 +43,27 @@ export default function Dashboard() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(loadReferrals, [])
 
-  function update(field, value) {
-    setForm((prev) => ({ ...prev, [field]: value }))
-  }
-
   function handleLogout() {
     clearAffiliateSession()
-    navigate('/indique/login', { replace: true })
+    navigate('/indique', { replace: true, state: { openModal: 'login' } })
   }
 
-  async function handleSubmit(e) {
-    e.preventDefault()
-    setFormError('')
-    setSuccessMessage('')
-    setSaving(true)
-    try {
-      await api.post('/affiliates/referrals', form, getAffiliateToken())
-      setForm(EMPTY_FORM)
-      setSuccessMessage('Indicação enviada! Vamos entrar em contato em breve.')
-      loadReferrals()
-    } catch (err) {
-      if (!handleError(err)) setFormError(err.message || 'Não foi possível enviar a indicação.')
-    } finally {
-      setSaving(false)
-    }
+  function handleCreated() {
+    setShowNewModal(false)
+    setSuccessMessage('Indicação enviada! Vamos entrar em contato em breve.')
+    loadReferrals()
+  }
+
+  function handleReferralSaved() {
+    setEditingReferral(null)
+    setSuccessMessage('Indicação atualizada.')
+    loadReferrals()
+  }
+
+  function handleReferralDeleted() {
+    setEditingReferral(null)
+    setSuccessMessage('Indicação excluída.')
+    loadReferrals()
   }
 
   return (
@@ -93,135 +85,73 @@ export default function Dashboard() {
             </p>
           </div>
         </div>
-        <button
-          onClick={handleLogout}
-          className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm cursor-pointer"
-          style={{ color: '#a1a1aa' }}
-        >
-          <LogOut size={15} />
-          Sair
-        </button>
+        <div className="flex items-center gap-1">
+          <NotificationBell handleError={handleError} />
+          <button
+            onClick={() => setShowProfileModal(true)}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm cursor-pointer"
+            style={{ color: '#a1a1aa' }}
+          >
+            <UserCog size={15} />
+            Meus dados
+          </button>
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm cursor-pointer"
+            style={{ color: '#a1a1aa' }}
+          >
+            <LogOut size={15} />
+            Sair
+          </button>
+        </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-6 py-10 flex flex-col gap-10">
-        <section>
-          <h1 className="text-lg font-semibold mb-1" style={{ color: '#f4f4f5' }}>
-            Nova indicação
-          </h1>
-          <p className="text-sm mb-5" style={{ color: '#71717a' }}>
-            Conte para a gente quem você quer indicar. Cuidamos do resto.
-          </p>
-
-          <form
-            onSubmit={handleSubmit}
-            className="p-6 rounded-2xl flex flex-col gap-4"
-            style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}
+      <main className="max-w-4xl mx-auto px-6 py-10 flex flex-col gap-6">
+        <section className="flex items-center justify-between">
+          <div>
+            <h1 className="text-lg font-semibold mb-1" style={{ color: '#f4f4f5' }}>
+              Minhas indicações
+            </h1>
+            <p className="text-sm" style={{ color: '#71717a' }}>
+              Acompanhe o andamento de quem você já indicou.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setSuccessMessage('')
+              setShowNewModal(true)
+            }}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium cursor-pointer flex-shrink-0"
+            style={{ background: 'linear-gradient(135deg, #0891b2, #7c3aed)', color: 'white' }}
           >
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="text-xs font-medium block mb-1.5" style={{ color: '#a1a1aa' }}>
-                  Nome do contato
-                </label>
-                <input value={form.contactName} onChange={(e) => update('contactName', e.target.value)} required style={inputStyle} />
-              </div>
-              <div>
-                <label className="text-xs font-medium block mb-1.5" style={{ color: '#a1a1aa' }}>
-                  Nome da empresa (opcional)
-                </label>
-                <input value={form.companyName} onChange={(e) => update('companyName', e.target.value)} style={inputStyle} />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="text-xs font-medium block mb-1.5" style={{ color: '#a1a1aa' }}>
-                  WhatsApp ou e-mail do indicado
-                </label>
-                <input value={form.contactInfo} onChange={(e) => update('contactInfo', e.target.value)} required style={inputStyle} />
-              </div>
-              <div>
-                <label className="text-xs font-medium block mb-1.5" style={{ color: '#a1a1aa' }}>
-                  O que eles precisam?
-                </label>
-                <select value={form.serviceType} onChange={(e) => update('serviceType', e.target.value)} style={inputStyle}>
-                  {SERVICE_TYPES.map((type) => (
-                    <option key={type} value={type}>
-                      {type}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label className="text-xs font-medium block mb-1.5" style={{ color: '#a1a1aa' }}>
-                Você já avisou que nós entraríamos em contato?
-              </label>
-              <div className="flex gap-3">
-                {[
-                  { label: 'Sim', value: true },
-                  { label: 'Não', value: false },
-                ].map(({ label, value }) => (
-                  <button
-                    key={label}
-                    type="button"
-                    onClick={() => update('alreadyNotified', value)}
-                    className="px-4 py-2 rounded-lg text-sm cursor-pointer"
-                    style={{
-                      background: form.alreadyNotified === value ? 'rgba(34,211,238,0.12)' : 'rgba(255,255,255,0.04)',
-                      color: form.alreadyNotified === value ? '#22d3ee' : '#a1a1aa',
-                      border: '1px solid',
-                      borderColor: form.alreadyNotified === value ? 'rgba(34,211,238,0.3)' : 'rgba(255,255,255,0.08)',
-                    }}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {formError && (
-              <p className="text-xs" style={{ color: '#f87171' }}>
-                {formError}
-              </p>
-            )}
-            {successMessage && (
-              <p className="text-xs" style={{ color: '#4ade80' }}>
-                {successMessage}
-              </p>
-            )}
-
-            <button
-              type="submit"
-              disabled={saving}
-              className="self-start flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium cursor-pointer"
-              style={{ background: 'linear-gradient(135deg, #0891b2, #7c3aed)', color: 'white', opacity: saving ? 0.7 : 1 }}
-            >
-              <Send size={14} />
-              {saving ? 'Enviando...' : 'Enviar indicação'}
-            </button>
-          </form>
+            <Plus size={14} />
+            Nova indicação
+          </button>
         </section>
 
-        <section>
-          <h2 className="text-lg font-semibold mb-4" style={{ color: '#f4f4f5' }}>
-            Minhas indicações
-          </h2>
+        {successMessage && (
+          <p className="text-xs" style={{ color: '#4ade80' }}>
+            {successMessage}
+          </p>
+        )}
 
-          {status === 'loading' && <p style={{ color: '#52525b' }}>Carregando...</p>}
-          {status === 'error' && <p style={{ color: '#f87171' }}>Não foi possível carregar suas indicações.</p>}
+        {status === 'loading' && <p style={{ color: '#52525b' }}>Carregando...</p>}
+        {status === 'error' && <p style={{ color: '#f87171' }}>Não foi possível carregar suas indicações.</p>}
 
-          {status === 'ready' && (
-            <div className="flex flex-col gap-2">
-              {referrals.length === 0 && <p style={{ color: '#52525b' }}>Você ainda não enviou nenhuma indicação.</p>}
-              {referrals.map((referral) => {
-                const meta = STATUS_META[referral.status]
-                return (
-                  <div
-                    key={referral.id}
-                    className="flex items-center justify-between gap-4 p-4 rounded-xl"
-                    style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
-                  >
+        {status === 'ready' && (
+          <div className="flex flex-col gap-2">
+            {referrals.length === 0 && <p style={{ color: '#52525b' }}>Você ainda não enviou nenhuma indicação.</p>}
+            {referrals.map((referral) => {
+              const meta = STATUS_META[referral.status]
+              const canEdit = referral.status === 'novo'
+              return (
+                <div
+                  key={referral.id}
+                  className="flex flex-col gap-2 p-4 rounded-xl"
+                  style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
+                >
+                  <div className="flex items-center justify-between gap-4">
                     <div className="min-w-0">
                       <p className="text-sm font-medium truncate" style={{ color: '#e4e4e7' }}>
                         {referral.contactName}
@@ -231,10 +161,15 @@ export default function Dashboard() {
                         {referral.serviceType} · {new Date(referral.createdAt).toLocaleDateString('pt-BR')}
                       </p>
                     </div>
-                    <div className="flex items-center gap-4 flex-shrink-0">
+                    <div className="flex items-center gap-3 flex-shrink-0">
                       {referral.status === 'fechado' && (
                         <span className="text-sm font-semibold" style={{ color: '#4ade80' }}>
-                          {formatCurrency(referral.commissionValue)}
+                          Provável comissão: {formatCurrency(referral.commissionValue)}
+                        </span>
+                      )}
+                      {referral.status === 'finalizado' && (
+                        <span className="text-sm font-semibold" style={{ color: '#4ade80' }}>
+                          Comissão: {formatCurrency(referral.commissionValue)}
                         </span>
                       )}
                       <span
@@ -243,14 +178,55 @@ export default function Dashboard() {
                       >
                         {meta.label}
                       </span>
+                      {canEdit && (
+                        <button
+                          type="button"
+                          onClick={() => setEditingReferral(referral)}
+                          className="p-1.5 rounded-lg cursor-pointer"
+                          style={{ color: '#71717a' }}
+                          aria-label="Editar indicação"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                      )}
                     </div>
                   </div>
-                )
-              })}
-            </div>
-          )}
-        </section>
+                  {referral.status === 'fechado' && (
+                    <p className="text-xs" style={{ color: '#71717a' }}>
+                      Projetos fechados ainda podem ser cancelados pelo cliente — o valor da comissão só é confirmado quando o projeto é finalizado.
+                    </p>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
       </main>
+
+      {showNewModal && (
+        <NewReferralModal onClose={() => setShowNewModal(false)} onCreated={handleCreated} handleError={handleError} />
+      )}
+
+      {editingReferral && (
+        <EditReferralModal
+          referral={editingReferral}
+          onClose={() => setEditingReferral(null)}
+          onSaved={handleReferralSaved}
+          onDeleted={handleReferralDeleted}
+          handleError={handleError}
+        />
+      )}
+
+      {showProfileModal && (
+        <EditProfileModal
+          affiliate={affiliate}
+          onClose={() => setShowProfileModal(false)}
+          onSaved={(updated) => {
+            setAffiliate(updated)
+            setShowProfileModal(false)
+          }}
+        />
+      )}
     </div>
   )
 }

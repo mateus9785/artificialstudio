@@ -1,4 +1,4 @@
-# ArtificialCode Landing
+# Artificial Studio Landing
 
 Landing page + backend (Node/Express/MySQL) com painel administrativo em `/admin`.
 

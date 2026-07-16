@@ -8,12 +8,16 @@ export const SERVICE_TYPES = [
 ]
 
 export const STATUS_META = {
-  novo: { label: 'Novo', color: '#22d3ee' },
-  contatado: { label: 'Contatado', color: '#a855f7' },
-  negociando: { label: 'Negociando', color: '#f59e0b' },
-  fechado: { label: 'Fechado', color: '#4ade80' },
-  sem_interesse: { label: 'Sem interesse', color: '#f87171' },
+  novo: { label: 'Indicação Recebida', color: '#22d3ee' },
+  contatado: { label: 'Entramos em contato (esperando retorno)', color: '#a855f7' },
+  negociando: { label: 'Em Negociação', color: '#f59e0b' },
+  fechado: { label: 'Projeto fechado (sendo desenvolvido)', color: '#3b82f6' },
+  finalizado: { label: 'Projeto finalizado (Comissão paga)', color: '#4ade80' },
+  sem_interesse: { label: 'Cliente sem interesse', color: '#a1a1aa' },
+  cancelado: { label: 'Cliente cancelou projeto', color: '#f87171' },
 }
+
+export const STATUS_ORDER = ['novo', 'contatado', 'negociando', 'fechado', 'finalizado', 'sem_interesse', 'cancelado']
 
 export const COMMISSION_TYPE_LABELS = {
   unico: 'Projeto único (50%)',

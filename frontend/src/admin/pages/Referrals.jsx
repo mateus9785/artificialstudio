@@ -3,7 +3,7 @@ import { X } from 'lucide-react'
 import { api } from '../../lib/api'
 import { getAdminToken } from '../../lib/adminAuth'
 import { useAdminGuard } from '../useAdminGuard'
-import { STATUS_META, COMMISSION_TYPE_LABELS, suggestCommission } from '../../lib/referralMeta'
+import { STATUS_META, STATUS_ORDER, COMMISSION_TYPE_LABELS, suggestCommission } from '../../lib/referralMeta'
 
 const inputStyle = {
   width: '100%',
@@ -106,9 +106,9 @@ function ReferralForm({ referral, onCancel, onSaved }) {
               Status
             </label>
             <select value={status} onChange={(e) => setStatus(e.target.value)} style={inputStyle}>
-              {Object.entries(STATUS_META).map(([value, meta]) => (
+              {STATUS_ORDER.map((value) => (
                 <option key={value} value={value}>
-                  {meta.label}
+                  {STATUS_META[value].label}
                 </option>
               ))}
             </select>
@@ -193,18 +193,55 @@ function ReferralForm({ referral, onCancel, onSaved }) {
   )
 }
 
+function ReferralCard({ referral, onOpen, onDragStart, onDragEnd, isDragging }) {
+  return (
+    <div
+      draggable
+      onDragStart={() => onDragStart(referral)}
+      onDragEnd={onDragEnd}
+      onClick={() => onOpen(referral)}
+      className="p-3.5 rounded-xl cursor-grab"
+      style={{
+        background: 'rgba(255,255,255,0.03)',
+        border: '1px solid rgba(255,255,255,0.06)',
+        opacity: isDragging ? 0.4 : 1,
+      }}
+    >
+      <p className="text-sm font-medium truncate" style={{ color: '#e4e4e7' }}>
+        {referral.contactName}
+      </p>
+      {referral.companyName && (
+        <p className="text-xs truncate mt-0.5" style={{ color: '#71717a' }}>
+          {referral.companyName}
+        </p>
+      )}
+      <p className="text-xs mt-1.5" style={{ color: '#52525b' }}>
+        {referral.serviceType}
+      </p>
+      <p className="text-xs mt-1 truncate" style={{ color: '#52525b' }}>
+        {referral.affiliate?.name} · {new Date(referral.createdAt).toLocaleDateString('pt-BR')}
+      </p>
+      {(referral.status === 'fechado' || referral.status === 'finalizado') && (
+        <p className="text-sm font-semibold mt-2" style={{ color: '#4ade80' }}>
+          {formatCurrency(referral.closedValue)}
+        </p>
+      )}
+    </div>
+  )
+}
+
 export default function Referrals() {
   const { handleError } = useAdminGuard()
   const [referrals, setReferrals] = useState([])
   const [status, setStatus] = useState('loading')
-  const [statusFilter, setStatusFilter] = useState('')
   const [editing, setEditing] = useState(null)
+  const [dragging, setDragging] = useState(null)
+  const [dragOverColumn, setDragOverColumn] = useState(null)
 
   function loadReferrals() {
     setStatus('loading')
-    const query = statusFilter ? `?status=${statusFilter}` : ''
     api
-      .get(`/admin/referrals${query}`, getAdminToken())
+      .get('/admin/referrals', getAdminToken())
       .then((data) => {
         setReferrals(data)
         setStatus('ready')
@@ -215,69 +252,92 @@ export default function Referrals() {
   }
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(loadReferrals, [statusFilter])
+  useEffect(loadReferrals, [])
 
   function handleSaved(saved) {
     setEditing(null)
     setReferrals((prev) => prev.map((r) => (r.id === saved.id ? saved : r)))
   }
 
+  async function moveReferral(referral, newStatus) {
+    if (referral.status === newStatus) return
+    const previousStatus = referral.status
+    setReferrals((prev) => prev.map((r) => (r.id === referral.id ? { ...r, status: newStatus } : r)))
+    try {
+      const saved = await api.put(`/admin/referrals/${referral.id}`, { status: newStatus }, getAdminToken())
+      setReferrals((prev) => prev.map((r) => (r.id === saved.id ? saved : r)))
+    } catch (err) {
+      setReferrals((prev) => prev.map((r) => (r.id === referral.id ? { ...r, status: previousStatus } : r)))
+      if (!handleError(err)) window.alert(err.message || 'Não foi possível mover a indicação.')
+    }
+  }
+
+  function handleDrop(columnStatus) {
+    setDragOverColumn(null)
+    if (dragging) moveReferral(dragging, columnStatus)
+    setDragging(null)
+  }
+
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-semibold" style={{ color: '#f4f4f5' }}>
-          Indicações
-        </h1>
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          style={{ ...inputStyle, width: 'auto' }}
-        >
-          <option value="">Todos os status</option>
-          {Object.entries(STATUS_META).map(([value, meta]) => (
-            <option key={value} value={value}>
-              {meta.label}
-            </option>
-          ))}
-        </select>
-      </div>
+    <div className="flex flex-col h-full">
+      <h1 className="text-xl font-semibold mb-6 flex-shrink-0" style={{ color: '#f4f4f5' }}>
+        Indicações
+      </h1>
 
       {status === 'loading' && <p style={{ color: '#52525b' }}>Carregando...</p>}
       {status === 'error' && <p style={{ color: '#f87171' }}>Não foi possível carregar as indicações.</p>}
 
       {status === 'ready' && (
-        <div className="flex flex-col gap-2">
-          {referrals.length === 0 && <p style={{ color: '#52525b' }}>Nenhuma indicação por aqui ainda.</p>}
-          {referrals.map((referral) => {
-            const meta = STATUS_META[referral.status]
+        <div className="flex gap-4 overflow-x-auto flex-1 min-h-0 pb-3">
+          {STATUS_ORDER.map((columnStatus) => {
+            const meta = STATUS_META[columnStatus]
+            const columnReferrals = referrals.filter((r) => r.status === columnStatus)
             return (
-              <button
-                key={referral.id}
-                onClick={() => setEditing(referral)}
-                className="flex items-center justify-between gap-4 p-4 rounded-xl text-left cursor-pointer"
-                style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
+              <div
+                key={columnStatus}
+                onDragOver={(e) => {
+                  e.preventDefault()
+                  setDragOverColumn(columnStatus)
+                }}
+                onDragLeave={() => setDragOverColumn((prev) => (prev === columnStatus ? null : prev))}
+                onDrop={() => handleDrop(columnStatus)}
+                className="flex-shrink-0 w-72 h-full flex flex-col rounded-xl"
+                style={{
+                  background: dragOverColumn === columnStatus ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.015)',
+                  border: `1px solid ${dragOverColumn === columnStatus ? meta.color : 'rgba(255,255,255,0.06)'}`,
+                }}
               >
-                <div className="min-w-0">
-                  <p className="text-sm font-medium truncate" style={{ color: '#e4e4e7' }}>
-                    {referral.contactName}
-                    {referral.companyName ? ` · ${referral.companyName}` : ''}
-                  </p>
-                  <p className="text-xs mt-0.5" style={{ color: '#52525b' }}>
-                    {referral.serviceType} · indicado por {referral.affiliate?.name} ·{' '}
-                    {new Date(referral.createdAt).toLocaleDateString('pt-BR')}
-                  </p>
-                </div>
-                <div className="flex items-center gap-4 flex-shrink-0">
-                  {referral.status === 'fechado' && (
-                    <span className="text-sm font-semibold" style={{ color: '#4ade80' }}>
-                      {formatCurrency(referral.commissionValue)}
-                    </span>
-                  )}
-                  <span className="text-xs font-medium px-2.5 py-1 rounded-md" style={{ background: `${meta.color}14`, color: meta.color }}>
+                <div className="flex items-center gap-2 p-3 flex-shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: meta.color }} />
+                  <span className="text-xs font-medium flex-1" style={{ color: '#d4d4d8' }}>
                     {meta.label}
                   </span>
+                  <span
+                    className="text-xs font-semibold px-1.5 py-0.5 rounded-md flex-shrink-0"
+                    style={{ background: `${meta.color}14`, color: meta.color }}
+                  >
+                    {columnReferrals.length}
+                  </span>
                 </div>
-              </button>
+
+                <div className="flex flex-col gap-2 p-2 overflow-y-auto flex-1 min-h-0">
+                  {columnReferrals.length === 0 && (
+                    <p className="text-xs p-2" style={{ color: '#3f3f46' }}>
+                      Nenhuma indicação
+                    </p>
+                  )}
+                  {columnReferrals.map((referral) => (
+                    <ReferralCard
+                      key={referral.id}
+                      referral={referral}
+                      onOpen={setEditing}
+                      onDragStart={setDragging}
+                      onDragEnd={() => setDragging(null)}
+                      isDragging={dragging?.id === referral.id}
+                    />
+                  ))}
+                </div>
+              </div>
             )
           })}
         </div>

@@ -3,7 +3,7 @@ import { MessageCircle, Minus, X, Send, Headset, User } from 'lucide-react'
 import { api } from '../lib/api'
 import { getSessionId } from '../lib/session'
 
-const CHAT_NAME = 'Atendimento ArtificialCode'
+const CHAT_NAME = 'Atendimento Artificial Studio'
 const POLL_INTERVAL_MS = 4000
 
 function Message({ msg }) {

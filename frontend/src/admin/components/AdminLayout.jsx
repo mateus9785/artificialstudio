@@ -1,17 +1,28 @@
+import { useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { FileText, BarChart3, MessageSquare, LogOut, Zap, Handshake } from 'lucide-react'
+import { FileText, BarChart3, LogOut, Handshake, ChevronsLeft, ChevronsRight } from 'lucide-react'
 import { clearAdminSession, getAdminUser } from '../../lib/adminAuth'
 
 const NAV_ITEMS = [
   { to: '/admin/posts', label: 'Blog', icon: FileText },
   { to: '/admin/referrals', label: 'Indicações', icon: Handshake },
   { to: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
-  { to: '/admin/chat', label: 'Conversas', icon: MessageSquare },
 ]
+
+const COLLAPSE_KEY = 'admin_sidebar_collapsed'
 
 export default function AdminLayout() {
   const navigate = useNavigate()
   const admin = getAdminUser()
+  const [collapsed, setCollapsed] = useState(() => localStorage.getItem(COLLAPSE_KEY) === '1')
+
+  function toggleCollapsed() {
+    setCollapsed((prev) => {
+      const next = !prev
+      localStorage.setItem(COLLAPSE_KEY, next ? '1' : '0')
+      return next
+    })
+  }
 
   function handleLogout() {
     clearAdminSession()
@@ -19,21 +30,18 @@ export default function AdminLayout() {
   }
 
   return (
-    <div className="min-h-screen flex" style={{ background: '#050505' }}>
+    <div className="h-screen flex overflow-hidden" style={{ background: '#050505' }}>
       <aside
-        className="w-60 flex-shrink-0 flex flex-col p-4"
-        style={{ borderRight: '1px solid rgba(255,255,255,0.06)' }}
+        className="flex-shrink-0 flex flex-col p-4 transition-[width] duration-200"
+        style={{ borderRight: '1px solid rgba(255,255,255,0.06)', width: collapsed ? '76px' : '240px' }}
       >
-        <div className="flex items-center gap-2 px-2 mb-8 mt-2">
-          <div
-            className="w-8 h-8 rounded-lg flex items-center justify-center"
-            style={{ background: 'linear-gradient(135deg, #0891b2, #7c3aed)' }}
-          >
-            <Zap size={16} fill="white" color="white" />
-          </div>
-          <span className="text-sm font-semibold" style={{ color: '#f4f4f5' }}>
-            Admin
-          </span>
+        <div className={`flex items-center mb-8 mt-2 ${collapsed ? 'justify-center' : 'gap-2 px-2'}`}>
+          <img src="/logo.png" alt="Artificial Studio" className="w-8 h-8 object-contain flex-shrink-0" />
+          {!collapsed && (
+            <span className="text-sm font-semibold truncate" style={{ color: '#f4f4f5' }}>
+              Admin
+            </span>
+          )}
         </div>
 
         <nav className="flex flex-col gap-1 flex-1">
@@ -41,38 +49,58 @@ export default function AdminLayout() {
             <NavLink
               key={to}
               to={to}
-              className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors"
+              title={collapsed ? label : undefined}
+              className={`flex items-center gap-2.5 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                collapsed ? 'justify-center px-0' : 'px-3'
+              }`}
               style={({ isActive }) => ({
                 background: isActive ? 'rgba(34,211,238,0.08)' : 'transparent',
                 color: isActive ? '#22d3ee' : '#a1a1aa',
               })}
             >
               <Icon size={16} />
-              {label}
+              {!collapsed && label}
             </NavLink>
           ))}
         </nav>
 
         <div className="pt-4" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-          {admin?.username && (
+          <button
+            onClick={toggleCollapsed}
+            title={collapsed ? 'Expandir menu' : 'Recolher menu'}
+            className={`w-full flex items-center gap-2.5 py-2.5 rounded-xl text-sm font-medium cursor-pointer transition-colors mb-1 ${
+              collapsed ? 'justify-center px-0' : 'px-3'
+            }`}
+            style={{ color: '#a1a1aa' }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+          >
+            {collapsed ? <ChevronsRight size={16} /> : <ChevronsLeft size={16} />}
+            {!collapsed && 'Recolher'}
+          </button>
+
+          {!collapsed && admin?.username && (
             <p className="text-xs px-3 mb-2 truncate" style={{ color: '#52525b' }}>
               {admin.username}
             </p>
           )}
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium cursor-pointer transition-colors"
+            title={collapsed ? 'Sair' : undefined}
+            className={`w-full flex items-center gap-2.5 py-2.5 rounded-xl text-sm font-medium cursor-pointer transition-colors ${
+              collapsed ? 'justify-center px-0' : 'px-3'
+            }`}
             style={{ color: '#a1a1aa' }}
             onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
             onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
           >
             <LogOut size={16} />
-            Sair
+            {!collapsed && 'Sair'}
           </button>
         </div>
       </aside>
 
-      <main className="flex-1 min-w-0 p-8 overflow-y-auto">
+      <main className="flex-1 min-w-0 overflow-y-auto p-8">
         <Outlet />
       </main>
     </div>

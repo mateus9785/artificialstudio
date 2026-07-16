@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Zap, Menu, X } from 'lucide-react'
+import { Menu, X } from 'lucide-react'
 
 export default function Header() {
   const [scrolled, setScrolled] = useState(false)
@@ -28,20 +28,12 @@ export default function Header() {
       <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
         {/* Logo */}
         <a href="#" className="flex items-center gap-2 group">
-          <div
-            className="w-8 h-8 rounded-lg flex items-center justify-center"
-            style={{
-              background: 'linear-gradient(135deg, #0891b2, #7c3aed)',
-              boxShadow: '0 0 16px rgba(34,211,238,0.3)',
-            }}
-          >
-            <Zap size={16} fill="white" color="white" />
-          </div>
+          <img src="/logo.png" alt="Artificial Studio" className="w-8 h-8 object-contain flex-shrink-0" />
           <span
             className="text-lg font-semibold tracking-tight"
             style={{ color: '#f4f4f5', letterSpacing: '-0.3px' }}
           >
-            Artificial<span className="gradient-text">Code</span>
+            Artificial<span className="gradient-text">Studio</span>
           </span>
         </a>
 
@@ -60,29 +52,6 @@ export default function Header() {
             </a>
           ))}
         </nav>
-
-        {/* CTA */}
-        <div className="hidden md:flex items-center gap-4">
-          <button
-            className="px-5 py-2 rounded-lg text-sm font-medium transition-all duration-300 cursor-pointer"
-            style={{
-              background: 'linear-gradient(135deg, rgba(8,145,178,0.9), rgba(124,58,237,0.9))',
-              color: 'white',
-              border: '1px solid rgba(34,211,238,0.2)',
-              boxShadow: '0 0 20px rgba(34,211,238,0.1)',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.boxShadow = '0 0 30px rgba(34,211,238,0.3), 0 0 60px rgba(168,85,247,0.15)'
-              e.currentTarget.style.transform = 'translateY(-1px)'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.boxShadow = '0 0 20px rgba(34,211,238,0.1)'
-              e.currentTarget.style.transform = 'translateY(0)'
-            }}
-          >
-            Falar com especialista
-          </button>
-        </div>
 
         {/* Mobile menu button */}
         <button
@@ -111,16 +80,6 @@ export default function Header() {
               {item}
             </a>
           ))}
-          <button
-            className="px-5 py-2.5 rounded-lg text-sm font-medium mt-2 cursor-pointer"
-            style={{
-              background: 'linear-gradient(135deg, rgba(8,145,178,0.9), rgba(124,58,237,0.9))',
-              color: 'white',
-              border: '1px solid rgba(34,211,238,0.2)',
-            }}
-          >
-            Falar com especialista
-          </button>
         </div>
       )}
     </header>

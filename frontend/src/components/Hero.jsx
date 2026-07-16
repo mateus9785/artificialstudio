@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { ArrowRight } from 'lucide-react'
+import { WHATSAPP_NUMBER } from './WhatsAppButton'
 
 function DotsBackground() {
   const canvasRef = useRef(null)
@@ -139,7 +140,10 @@ export default function Hero() {
 
         {/* CTA buttons */}
         <div className="animate-fade-in-up delay-300 flex flex-col sm:flex-row gap-4 justify-center">
-          <button
+          <a
+            href={`https://wa.me/${WHATSAPP_NUMBER}`}
+            target="_blank"
+            rel="noopener noreferrer"
             className="group flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl font-semibold text-base transition-all duration-300 cursor-pointer"
             style={{
               background: 'linear-gradient(135deg, #0891b2, #7c3aed)',
@@ -158,7 +162,7 @@ export default function Hero() {
           >
             Quero meu projeto agora
             <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
-          </button>
+          </a>
 
           <a
             href="#portfolio"

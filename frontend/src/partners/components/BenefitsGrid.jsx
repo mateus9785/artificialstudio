@@ -1,34 +1,24 @@
-import { DollarSign, Smartphone, CheckCircle2, Wallet, Repeat } from 'lucide-react'
+import { DollarSign, Smartphone, Wallet } from 'lucide-react'
 
 const BENEFITS = [
   {
     icon: DollarSign,
     title: 'Comissões Altas',
-    description: 'Projetos de tecnologia variam de R$ 2.000 a R$ 15.000+. Você fica com até 50% do valor fechado.',
+    description:
+      'Projetos de tecnologia variam de R$ 2.000 a R$ 15.000+. Você fica com até 50% do valor fechado. Se for uma mensalidade, você fica com 100% da primeira mensalidade.',
     color: '#22d3ee',
-  },
-  {
-    icon: Repeat,
-    title: 'Mensalidades',
-    description: 'Fechou um serviço recorrente? Você fica com 100% da primeira mensalidade.',
-    color: '#a855f7',
   },
   {
     icon: Smartphone,
-    title: '100% Remoto',
-    description: 'Indique pelo celular ou computador, no seu ritmo, de onde estiver.',
-    color: '#22d3ee',
-  },
-  {
-    icon: CheckCircle2,
-    title: 'Sem Burocracia',
-    description: 'Não precisa vender, negociar ou entender de programação. O seu papel é só nos conectar.',
+    title: '100% Remoto. Sem burocracia',
+    description:
+      'Indique pelo celular ou computador, no seu ritmo, de onde estiver. Sem burocracia: não precisa vender, negociar ou entender de programação, o seu papel é só nos conectar.',
     color: '#a855f7',
   },
   {
     icon: Wallet,
     title: 'Pagamento via PIX',
-    description: 'Assim que o cliente finalizar o pagamento do projeto, a comissão cai direto na sua chave PIX.',
+    description: 'Projeto finalizado e pago pelo cliente? Você recebe direto na sua chave PIX.',
     color: '#22d3ee',
   },
 ]
@@ -51,15 +41,17 @@ export default function BenefitsGrid() {
               className="p-6 rounded-2xl transition-transform duration-300 hover:-translate-y-1"
               style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}
             >
-              <div
-                className="w-11 h-11 rounded-xl flex items-center justify-center mb-4"
-                style={{ background: `${color}14` }}
-              >
-                <Icon size={20} color={color} />
+              <div className="flex items-center gap-3 mb-2">
+                <div
+                  className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+                  style={{ background: `${color}14` }}
+                >
+                  <Icon size={20} color={color} />
+                </div>
+                <h3 className="text-base font-semibold" style={{ color: '#f4f4f5' }}>
+                  {title}
+                </h3>
               </div>
-              <h3 className="text-base font-semibold mb-2" style={{ color: '#f4f4f5' }}>
-                {title}
-              </h3>
               <p className="text-sm leading-relaxed" style={{ color: '#71717a' }}>
                 {description}
               </p>

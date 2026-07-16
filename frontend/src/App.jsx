@@ -5,7 +5,7 @@ import Hero from './components/Hero'
 import Portfolio from './components/Portfolio'
 import Blog from './components/Blog'
 import Footer from './components/Footer'
-import ChatWidget from './components/ChatWidget'
+import WhatsAppButton from './components/WhatsAppButton'
 import CookieConsent from './components/CookieConsent'
 import { getStoredConsent, initTrackingScripts, trackEvent } from './lib/analytics'
 
@@ -27,7 +27,7 @@ export default function App() {
         <Blog />
       </main>
       <Footer />
-      <ChatWidget />
+      <WhatsAppButton />
       {!consent && <CookieConsent onDecision={setConsent} />}
     </div>
   )

@@ -1,9 +1,10 @@
-import { Link } from 'react-router-dom'
 import { ArrowRight, LogIn } from 'lucide-react'
+import PartnerHeader from './PartnerHeader'
 
-export default function PartnerHero() {
+export default function PartnerHero({ onLogin, onRegister }) {
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden" style={{ background: '#050505' }}>
+      <PartnerHeader onLogin={onLogin} onRegister={onRegister} />
       <div
         className="absolute inset-0 pointer-events-none"
         style={{ background: 'radial-gradient(ellipse 80% 50% at 50% -10%, rgba(34,211,238,0.12) 0%, transparent 70%)' }}
@@ -25,7 +26,8 @@ export default function PartnerHero() {
           className="font-bold leading-tight mb-6"
           style={{ fontSize: 'clamp(2.2rem, 6vw, 3.6rem)', letterSpacing: '-1.5px', color: '#f4f4f5' }}
         >
-          Indique. Nós fechamos.{' '}
+          Indique. Nós fechamos.
+          <br />
           <span
             style={{
               background: 'linear-gradient(135deg, #22d3ee 0%, #a855f7 100%)',
@@ -49,9 +51,10 @@ export default function PartnerHero() {
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Link
-            to="/indique/cadastro"
-            className="group flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl font-semibold text-base transition-all duration-300"
+          <button
+            type="button"
+            onClick={onRegister}
+            className="group flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl font-semibold text-base transition-all duration-300 cursor-pointer"
             style={{
               background: 'linear-gradient(135deg, #0891b2, #7c3aed)',
               color: 'white',
@@ -61,11 +64,12 @@ export default function PartnerHero() {
           >
             Quero ser parceiro
             <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
-          </Link>
+          </button>
 
-          <Link
-            to="/indique/login"
-            className="flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl font-medium text-base transition-all duration-300"
+          <button
+            type="button"
+            onClick={onLogin}
+            className="flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl font-medium text-base transition-all duration-300 cursor-pointer"
             style={{
               background: 'rgba(255,255,255,0.03)',
               color: '#a1a1aa',
@@ -74,7 +78,7 @@ export default function PartnerHero() {
           >
             <LogIn size={16} />
             Já sou parceiro
-          </Link>
+          </button>
         </div>
 
         <div className="mt-14 flex flex-col sm:flex-row items-center justify-center gap-8">
