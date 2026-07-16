@@ -1,12 +1,20 @@
 import { useEffect, useState } from 'react'
-import { ArrowRight, Clock, TrendingUp } from 'lucide-react'
-import { api } from '../lib/api'
+import { Link } from 'react-router-dom'
+import { ArrowRight, TrendingUp } from 'lucide-react'
+import { api, API_URL } from '../lib/api'
 import { hexToRgba } from '../lib/color'
+
+function resolveImageUrl(imageUrl) {
+  if (!imageUrl) return null
+  if (/^https?:\/\//.test(imageUrl)) return imageUrl
+  return `${new URL(API_URL).origin}${imageUrl}`
+}
 
 const TAG_ICONS = {
   'Inteligência Artificial': '🤖',
   'Marketing Digital': '📈',
   'Performance Web': '⚡',
+  'Desenvolvimento de Software': '💻',
 }
 
 function formatDate(isoDate) {
@@ -22,7 +30,7 @@ export default function Blog() {
   useEffect(() => {
     let active = true
     api
-      .get('/posts')
+      .get('/posts?limit=3')
       .then((data) => {
         if (active) {
           setPosts(data)
@@ -105,16 +113,18 @@ export default function Blog() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {posts.map((post) => {
             const gradient = `linear-gradient(135deg, ${hexToRgba(post.tagColor, 0.06)} 0%, ${hexToRgba(post.tagColor, 0.02)} 100%)`
+            const image = resolveImageUrl(post.imageUrl)
             return (
               <article
                 key={post.id}
-                className="blog-card rounded-2xl overflow-hidden cursor-pointer"
+                className="blog-card rounded-2xl overflow-hidden"
                 style={{
                   background: gradient,
                   border: '1px solid rgba(255,255,255,0.06)',
                 }}
               >
-                {/* Image placeholder */}
+              <Link to={`/blog/${post.slug}`} className="block cursor-pointer">
+                {/* Image */}
                 <div
                   className="relative h-44 overflow-hidden"
                   style={{
@@ -122,23 +132,37 @@ export default function Blog() {
                     borderBottom: '1px solid rgba(255,255,255,0.05)',
                   }}
                 >
-                  {/* Decorative grid pattern */}
-                  <div
-                    className="absolute inset-0"
-                    style={{
-                      backgroundImage: `linear-gradient(${post.tagColor}15 1px, transparent 1px), linear-gradient(90deg, ${post.tagColor}15 1px, transparent 1px)`,
-                      backgroundSize: '30px 30px',
-                    }}
-                  />
-                  {/* Icon */}
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div
-                      className="text-5xl opacity-20 select-none"
-                      style={{ filter: `drop-shadow(0 0 20px ${post.tagColor})` }}
-                    >
-                      {TAG_ICONS[post.tag] || '📝'}
-                    </div>
-                  </div>
+                  {image ? (
+                    <img
+                      src={image}
+                      alt={post.title}
+                      loading="lazy"
+                      decoding="async"
+                      width="400"
+                      height="176"
+                      className="absolute inset-0 w-full h-full object-cover"
+                    />
+                  ) : (
+                    <>
+                      {/* Decorative grid pattern */}
+                      <div
+                        className="absolute inset-0"
+                        style={{
+                          backgroundImage: `linear-gradient(${post.tagColor}15 1px, transparent 1px), linear-gradient(90deg, ${post.tagColor}15 1px, transparent 1px)`,
+                          backgroundSize: '30px 30px',
+                        }}
+                      />
+                      {/* Icon */}
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div
+                          className="text-5xl opacity-20 select-none"
+                          style={{ filter: `drop-shadow(0 0 20px ${post.tagColor})` }}
+                        >
+                          {TAG_ICONS[post.tag] || '📝'}
+                        </div>
+                      </div>
+                    </>
+                  )}
                   {post.trending && (
                     <div
                       className="absolute top-3 right-3 flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium"
@@ -157,23 +181,17 @@ export default function Blog() {
 
                 {/* Content */}
                 <div className="p-6">
-                  {/* Tag + Read time */}
-                  <div className="flex items-center justify-between mb-3">
-                    <span
-                      className="text-xs font-medium px-2.5 py-1 rounded-md"
-                      style={{
-                        background: `${post.tagColor}14`,
-                        color: post.tagColor,
-                        border: `1px solid ${post.tagColor}22`,
-                      }}
-                    >
-                      {post.tag}
-                    </span>
-                    <div className="flex items-center gap-1 text-xs" style={{ color: '#3f3f46' }}>
-                      <Clock size={11} />
-                      {post.readTime} leitura
-                    </div>
-                  </div>
+                  {/* Tag */}
+                  <span
+                    className="inline-block text-xs font-medium px-2.5 py-1 rounded-md mb-3"
+                    style={{
+                      background: `${post.tagColor}14`,
+                      color: post.tagColor,
+                      border: `1px solid ${post.tagColor}22`,
+                    }}
+                  >
+                    {post.tag}
+                  </span>
 
                   {/* Title */}
                   <h3
@@ -201,6 +219,7 @@ export default function Blog() {
                     </span>
                   </div>
                 </div>
+              </Link>
               </article>
             )
           })}

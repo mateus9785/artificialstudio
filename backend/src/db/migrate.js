@@ -11,7 +11,12 @@ const statements = schema
   .map((s) => s.trim())
   .filter(Boolean)
 
-const IGNORABLE_ERRORS = new Set(['ER_DUP_FIELDNAME', 'ER_DUP_KEYNAME', 'ER_TABLE_EXISTS_ERROR'])
+const IGNORABLE_ERRORS = new Set([
+  'ER_DUP_FIELDNAME',
+  'ER_DUP_KEYNAME',
+  'ER_TABLE_EXISTS_ERROR',
+  'ER_CANT_DROP_FIELD_OR_KEY',
+])
 
 async function migrate() {
   const connection = await pool.getConnection()

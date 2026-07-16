@@ -1,6 +1,97 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ArrowRight } from 'lucide-react'
 import { WHATSAPP_NUMBER } from './WhatsAppButton'
+
+const gradientTextStyle = {
+  background: 'linear-gradient(135deg, #22d3ee 0%, #a855f7 100%)',
+  WebkitBackgroundClip: 'text',
+  WebkitTextFillColor: 'transparent',
+  backgroundClip: 'text',
+}
+
+function RevealWords({ text, delayStart = 0, gradient = false }) {
+  return text.split(' ').map((word, i) => (
+    <span
+      key={`${word}-${i}`}
+      className="word-reveal"
+      style={{
+        marginRight: '0.28em',
+        animationDelay: `${delayStart + i * 0.07}s`,
+        ...(gradient ? gradientTextStyle : {}),
+      }}
+    >
+      {word}
+    </span>
+  ))
+}
+
+function useInView(ref, threshold = 0.4) {
+  const [inView, setInView] = useState(false)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setInView(true)
+          observer.disconnect()
+        }
+      },
+      { threshold }
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [ref, threshold])
+
+  return inView
+}
+
+function StatCounter({ value }) {
+  const match = value.match(/^(\d+)(.*)$/)
+  const target = match ? parseInt(match[1], 10) : null
+  const suffix = match ? match[2] : ''
+  const ref = useRef(null)
+  const inView = useInView(ref, 0.6)
+  const [display, setDisplay] = useState(0)
+  const [settled, setSettled] = useState(target === null)
+
+  useEffect(() => {
+    if (!inView || target === null) return
+
+    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (prefersReduced) {
+      setDisplay(target)
+      setSettled(true)
+      return
+    }
+
+    const duration = 1100
+    const start = performance.now()
+    let raf
+
+    const tick = (now) => {
+      const progress = Math.min((now - start) / duration, 1)
+      const eased = 1 - Math.pow(1 - progress, 3)
+      setDisplay(Math.round(eased * target))
+      if (progress < 1) {
+        raf = requestAnimationFrame(tick)
+      } else {
+        setSettled(true)
+      }
+    }
+
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [inView, target])
+
+  return (
+    <span ref={ref} className={settled ? 'stat-counting' : ''} style={gradientTextStyle}>
+      {target !== null ? display : value}
+      {suffix}
+    </span>
+  )
+}
 
 function DotsBackground() {
   const canvasRef = useRef(null)
@@ -70,14 +161,37 @@ function DotsBackground() {
 }
 
 export default function Hero() {
+  const spotlightRef = useRef(null)
+
+  const handleMouseMove = (e) => {
+    if (!spotlightRef.current) return
+    const rect = e.currentTarget.getBoundingClientRect()
+    const x = ((e.clientX - rect.left) / rect.width) * 100
+    const y = ((e.clientY - rect.top) / rect.height) * 100
+    spotlightRef.current.style.setProperty('--mx', `${x}%`)
+    spotlightRef.current.style.setProperty('--my', `${y}%`)
+  }
+
   return (
     <section
       id="home"
       className="relative min-h-screen flex items-center justify-center overflow-hidden scroll-mt-20"
       style={{ background: '#050505' }}
+      onMouseMove={handleMouseMove}
     >
       {/* Animated dot grid */}
       <DotsBackground />
+
+      {/* Cursor-follow spotlight */}
+      <div
+        ref={spotlightRef}
+        className="absolute inset-0 pointer-events-none hidden md:block"
+        style={{
+          background:
+            'radial-gradient(420px circle at var(--mx, 50%) var(--my, 30%), rgba(34,211,238,0.06), transparent 70%)',
+          transition: 'background 0.1s ease-out',
+        }}
+      />
 
       {/* Radial glows */}
       <div
@@ -106,24 +220,15 @@ export default function Hero() {
       <div className="relative z-10 max-w-5xl mx-auto px-6 text-center pt-24 pb-20">
         {/* H1 */}
         <h1
-          className="animate-fade-in-up delay-100 font-bold leading-tight mb-6"
+          className="font-bold leading-tight mb-6"
           style={{
             fontSize: 'clamp(2.2rem, 6vw, 4rem)',
             letterSpacing: '-1.5px',
             color: '#f4f4f5',
           }}
         >
-          Desenvolver seu site ficou muito mais{' '}
-          <span
-            style={{
-              background: 'linear-gradient(135deg, #22d3ee 0%, #a855f7 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text',
-            }}
-          >
-            barato na era das IAs
-          </span>
+          <RevealWords text="Desenvolver seu site ficou muito mais" delayStart={0.1} />
+          <RevealWords text="barato na era das IAs" delayStart={0.52} gradient />
         </h1>
 
         {/* Subtitle */}
@@ -196,16 +301,8 @@ export default function Hero() {
             { value: '24/7', label: 'atendimento automatizado' },
           ].map(({ value, label }) => (
             <div key={label} className="flex flex-col items-center gap-1">
-              <span
-                className="text-2xl font-bold"
-                style={{
-                  background: 'linear-gradient(135deg, #22d3ee, #a855f7)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  backgroundClip: 'text',
-                }}
-              >
-                {value}
+              <span className="text-2xl font-bold">
+                <StatCounter value={value} />
               </span>
               <span className="text-sm" style={{ color: '#52525b' }}>
                 {label}

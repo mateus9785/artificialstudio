@@ -9,7 +9,6 @@ const SEED_POSTS = [
       'Formulários convencionais convertem 2-4%. IAs de qualificação chegam a 30%. Entenda a tecnologia que está mudando o jogo.',
     tag: 'Inteligência Artificial',
     tag_color: '#22d3ee',
-    read_time: '5 min',
     trending: true,
     published_at: '2025-06-01',
   },
@@ -19,7 +18,6 @@ const SEED_POSTS = [
       'Gastar em anúncios sem uma landing page otimizada é jogar dinheiro fora. Veja o checklist que usamos antes de ligar qualquer campanha.',
     tag: 'Marketing Digital',
     tag_color: '#a855f7',
-    read_time: '7 min',
     trending: false,
     published_at: '2025-05-01',
   },
@@ -29,7 +27,6 @@ const SEED_POSTS = [
       'Para cada segundo a mais de carregamento, você perde 7% de conversão. Aprenda como chegamos a scores acima de 98 no PageSpeed.',
     tag: 'Performance Web',
     tag_color: '#f59e0b',
-    read_time: '6 min',
     trending: true,
     published_at: '2025-04-01',
   },
@@ -58,9 +55,9 @@ async function seed() {
     if (existingPosts[0].count === 0) {
       for (const post of SEED_POSTS) {
         await connection.query(
-          `INSERT INTO posts (title, excerpt, tag, tag_color, read_time, trending, published_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?)`,
-          [post.title, post.excerpt, post.tag, post.tag_color, post.read_time, post.trending, post.published_at],
+          `INSERT INTO posts (title, excerpt, tag, tag_color, trending, published_at)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+          [post.title, post.excerpt, post.tag, post.tag_color, post.trending, post.published_at],
         )
       }
       console.log(`${SEED_POSTS.length} posts iniciais criados.`)

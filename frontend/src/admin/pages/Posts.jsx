@@ -1,18 +1,37 @@
 import { useEffect, useState } from 'react'
-import { Plus, Pencil, Trash2, X } from 'lucide-react'
-import { api } from '../../lib/api'
+import { Plus, Pencil, Trash2, X, Upload } from 'lucide-react'
+import { api, API_URL, uploadFile } from '../../lib/api'
 import { getAdminToken } from '../../lib/adminAuth'
 import { useAdminGuard } from '../useAdminGuard'
 
 const EMPTY_FORM = {
   title: '',
+  slug: '',
   excerpt: '',
   content: '',
+  imageUrl: '',
   tag: '',
   tagColor: '#22d3ee',
-  readTime: '5 min',
   trending: false,
   publishedAt: new Date().toISOString().slice(0, 10),
+}
+
+const DIACRITICS_REGEX = new RegExp('[\\u0300-\\u036f]', 'g')
+
+function slugify(text) {
+  return (text || '')
+    .normalize('NFD')
+    .replace(DIACRITICS_REGEX, '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
+function resolveImageUrl(imageUrl) {
+  if (!imageUrl) return null
+  if (/^https?:\/\//.test(imageUrl)) return imageUrl
+  return `${new URL(API_URL).origin}${imageUrl}`
 }
 
 function PostForm({ initial, onCancel, onSaved }) {
@@ -20,9 +39,27 @@ function PostForm({ initial, onCancel, onSaved }) {
   const [form, setForm] = useState(initial)
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
+  const [uploading, setUploading] = useState(false)
 
   function update(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }))
+  }
+
+  async function handleImageChange(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setError('')
+    setUploading(true)
+    try {
+      const token = getAdminToken()
+      const { url } = await uploadFile('/admin/posts/upload', file, 'image', token)
+      update('imageUrl', url)
+    } catch (err) {
+      if (!handleError(err)) setError(err.message || 'Não foi possível enviar a imagem.')
+    } finally {
+      setUploading(false)
+      e.target.value = ''
+    }
   }
 
   async function handleSubmit(e) {
@@ -70,6 +107,18 @@ function PostForm({ initial, onCancel, onSaved }) {
             />
           </Field>
 
+          <Field label="URL amigável (slug)">
+            <input
+              value={form.slug || ''}
+              onChange={(e) => update('slug', slugify(e.target.value))}
+              placeholder={slugify(form.title) || 'gerado-automaticamente-a-partir-do-titulo'}
+              style={inputStyle}
+            />
+            <p className="text-xs mt-1.5" style={{ color: '#52525b' }}>
+              /blog/{form.slug || slugify(form.title) || '...'}
+            </p>
+          </Field>
+
           <Field label="Resumo">
             <textarea
               value={form.excerpt}
@@ -89,6 +138,27 @@ function PostForm({ initial, onCancel, onSaved }) {
             />
           </Field>
 
+          <Field label="Imagem de capa (opcional)">
+            <div className="flex items-center gap-3">
+              <label
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium cursor-pointer flex-shrink-0"
+                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: '#d4d4d8' }}
+              >
+                <Upload size={14} />
+                {uploading ? 'Enviando...' : 'Escolher imagem'}
+                <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={handleImageChange} disabled={uploading} hidden />
+              </label>
+              {form.imageUrl && (
+                <img
+                  src={resolveImageUrl(form.imageUrl)}
+                  alt="Pré-visualização"
+                  className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
+                  style={{ border: '1px solid rgba(255,255,255,0.08)' }}
+                />
+              )}
+            </div>
+          </Field>
+
           <div className="grid grid-cols-2 gap-4">
             <Field label="Tag">
               <input value={form.tag} onChange={(e) => update('tag', e.target.value)} required style={inputStyle} />
@@ -103,25 +173,15 @@ function PostForm({ initial, onCancel, onSaved }) {
             </Field>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <Field label="Tempo de leitura">
-              <input
-                value={form.readTime}
-                onChange={(e) => update('readTime', e.target.value)}
-                required
-                style={inputStyle}
-              />
-            </Field>
-            <Field label="Data de publicação">
-              <input
-                type="date"
-                value={form.publishedAt?.slice(0, 10)}
-                onChange={(e) => update('publishedAt', e.target.value)}
-                required
-                style={inputStyle}
-              />
-            </Field>
-          </div>
+          <Field label="Data de publicação">
+            <input
+              type="date"
+              value={form.publishedAt?.slice(0, 10)}
+              onChange={(e) => update('publishedAt', e.target.value)}
+              required
+              style={inputStyle}
+            />
+          </Field>
 
           <label className="flex items-center gap-2 text-sm" style={{ color: '#d4d4d8' }}>
             <input type="checkbox" checked={form.trending} onChange={(e) => update('trending', e.target.checked)} />
@@ -209,7 +269,7 @@ export default function Posts() {
   }
 
   function openEdit(post) {
-    setEditing(post)
+    setEditing({ ...post, publishedAt: post.publishedAt?.slice(0, 10) })
     setShowForm(true)
   }
 
@@ -275,7 +335,7 @@ export default function Posts() {
                   {post.title}
                 </p>
                 <p className="text-xs mt-0.5" style={{ color: '#52525b' }}>
-                  {post.publishedAt?.slice(0, 10)} · {post.readTime}
+                  {post.publishedAt?.slice(0, 10)}
                 </p>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">

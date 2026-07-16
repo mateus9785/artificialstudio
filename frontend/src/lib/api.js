@@ -33,3 +33,29 @@ export const api = {
   put: (path, body, token) => request(path, { method: 'PUT', body, token }),
   del: (path, token) => request(path, { method: 'DELETE', token }),
 }
+
+export async function uploadFile(path, file, fieldName, token) {
+  const formData = new FormData()
+  formData.append(fieldName, file)
+
+  const res = await fetch(`${API_URL}${path}`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    body: formData,
+  })
+
+  if (!res.ok) {
+    let message = res.statusText
+    try {
+      const data = await res.json()
+      message = data.error || message
+    } catch {
+      // resposta sem corpo JSON
+    }
+    const error = new Error(message)
+    error.status = res.status
+    throw error
+  }
+
+  return res.json()
+}
