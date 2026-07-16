@@ -34,7 +34,15 @@ export default function Footer() {
           {/* Brand */}
           <div className="lg:col-span-2">
             <a href="#" className="flex items-center gap-2 mb-4">
-              <img src="/logo.png" alt="Artificial Studio" className="w-8 h-8 object-contain flex-shrink-0" />
+              <img
+                src="/logo.png"
+                alt="Artificial Studio"
+                width="32"
+                height="32"
+                loading="lazy"
+                decoding="async"
+                className="w-8 h-8 object-contain flex-shrink-0"
+              />
               <span
                 className="text-lg font-semibold"
                 style={{ color: '#f4f4f5', letterSpacing: '-0.3px' }}
@@ -89,12 +97,12 @@ export default function Footer() {
           {/* Links */}
           {Object.entries(FOOTER_LINKS).map(([group, links]) => (
             <div key={group}>
-              <h4
+              <h3
                 className="text-sm font-semibold mb-4"
                 style={{ color: '#a1a1aa', letterSpacing: '0.05em', textTransform: 'uppercase', fontSize: '11px' }}
               >
                 {group}
-              </h4>
+              </h3>
               <ul className="flex flex-col gap-3">
                 {links.map((link) => (
                   <li key={link}>

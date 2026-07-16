@@ -1,20 +1,20 @@
 import { useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { FileText, BarChart3, LogOut, Handshake, ChevronsLeft, ChevronsRight } from 'lucide-react'
-import { clearAdminSession, getAdminUser } from '../../lib/adminAuth'
+import { FileText, LogOut, Handshake, ChevronsLeft, ChevronsRight, KeyRound } from 'lucide-react'
+import { clearAdminSession } from '../../lib/adminAuth'
+import ChangePasswordModal from './ChangePasswordModal'
 
 const NAV_ITEMS = [
   { to: '/admin/posts', label: 'Blog', icon: FileText },
   { to: '/admin/referrals', label: 'Indicações', icon: Handshake },
-  { to: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
 ]
 
 const COLLAPSE_KEY = 'admin_sidebar_collapsed'
 
 export default function AdminLayout() {
   const navigate = useNavigate()
-  const admin = getAdminUser()
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(COLLAPSE_KEY) === '1')
+  const [showChangePassword, setShowChangePassword] = useState(false)
 
   function toggleCollapsed() {
     setCollapsed((prev) => {
@@ -79,11 +79,19 @@ export default function AdminLayout() {
             {!collapsed && 'Recolher'}
           </button>
 
-          {!collapsed && admin?.username && (
-            <p className="text-xs px-3 mb-2 truncate" style={{ color: '#52525b' }}>
-              {admin.username}
-            </p>
-          )}
+          <button
+            onClick={() => setShowChangePassword(true)}
+            title={collapsed ? 'Alterar senha' : undefined}
+            className={`w-full flex items-center gap-2.5 py-2.5 rounded-xl text-sm font-medium cursor-pointer transition-colors mb-1 ${
+              collapsed ? 'justify-center px-0' : 'px-3'
+            }`}
+            style={{ color: '#a1a1aa' }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+          >
+            <KeyRound size={16} />
+            {!collapsed && 'Alterar senha'}
+          </button>
           <button
             onClick={handleLogout}
             title={collapsed ? 'Sair' : undefined}
@@ -103,6 +111,8 @@ export default function AdminLayout() {
       <main className="flex-1 min-w-0 overflow-y-auto p-8">
         <Outlet />
       </main>
+
+      {showChangePassword && <ChangePasswordModal onClose={() => setShowChangePassword(false)} />}
     </div>
   )
 }

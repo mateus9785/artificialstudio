@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Shield, X } from 'lucide-react'
-import { storeConsent, trackConsent, initTrackingScripts } from '../lib/analytics'
+import { storeConsent, initTrackingScripts } from '../lib/analytics'
 
 export default function CookieConsent({ onDecision }) {
   const [showPreferences, setShowPreferences] = useState(false)
@@ -9,7 +9,6 @@ export default function CookieConsent({ onDecision }) {
 
   function applyConsent(consent) {
     storeConsent(consent)
-    trackConsent(consent)
     initTrackingScripts(consent)
     onDecision(consent)
   }

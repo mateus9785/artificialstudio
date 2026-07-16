@@ -7,6 +7,8 @@ import { requireAdmin } from '../middleware/requireAdmin.js'
 
 export const authRouter = Router()
 
+const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/
+
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 20,
@@ -39,4 +41,33 @@ authRouter.post('/login', loginLimiter, async (req, res) => {
 
 authRouter.get('/me', requireAdmin, (req, res) => {
   res.json({ admin: { id: req.admin.sub, username: req.admin.username } })
+})
+
+authRouter.put('/password', requireAdmin, async (req, res) => {
+  const { currentPassword, newPassword } = req.body || {}
+
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ error: 'Informe a senha atual e a nova senha.' })
+  }
+  if (!PASSWORD_REGEX.test(newPassword)) {
+    return res.status(400).json({
+      error: 'A nova senha precisa ter no mínimo 8 caracteres, com letra maiúscula, minúscula, número e símbolo.',
+    })
+  }
+
+  const [rows] = await pool.query('SELECT id, password_hash FROM admins WHERE id = ?', [req.admin.sub])
+  const admin = rows[0]
+  if (!admin) {
+    return res.status(404).json({ error: 'Administrador não encontrado.' })
+  }
+
+  const passwordMatches = await bcrypt.compare(currentPassword, admin.password_hash)
+  if (!passwordMatches) {
+    return res.status(401).json({ error: 'Senha atual incorreta.' })
+  }
+
+  const passwordHash = await bcrypt.hash(newPassword, 10)
+  await pool.query('UPDATE admins SET password_hash = ? WHERE id = ?', [passwordHash, admin.id])
+
+  res.json({ message: 'Senha alterada com sucesso.' })
 })

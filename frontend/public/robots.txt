@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /indique/dashboard
+Disallow: /indique/redefinir-senha
+
+Sitemap: https://artificialstudio.com.br/sitemap.xml

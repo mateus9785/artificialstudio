@@ -1,6 +1,3 @@
-import { API_URL } from './api'
-import { getSessionId } from './session'
-
 const CONSENT_KEY = 'ac_consent'
 
 export function getStoredConsent() {
@@ -81,44 +78,5 @@ export function initTrackingScripts(consent) {
   }
   if (consent?.marketing) {
     loadPixel(import.meta.env.VITE_PIXEL_ID)
-  }
-}
-
-// Analytics próprio: eventos que alimentam o painel de administrador
-export async function trackEvent(eventType, meta = {}) {
-  const params = new URLSearchParams(window.location.search)
-  try {
-    await fetch(`${API_URL}/track/event`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        sessionId: getSessionId(),
-        eventType,
-        pagePath: window.location.pathname,
-        referrer: document.referrer || null,
-        utmSource: params.get('utm_source'),
-        utmMedium: params.get('utm_medium'),
-        utmCampaign: params.get('utm_campaign'),
-        meta,
-      }),
-    })
-  } catch {
-    // beacon best-effort, não deve quebrar a navegação do usuário
-  }
-}
-
-export async function trackConsent(consent) {
-  try {
-    await fetch(`${API_URL}/track/consent`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        sessionId: getSessionId(),
-        analyticsConsent: Boolean(consent.analytics),
-        marketingConsent: Boolean(consent.marketing),
-      }),
-    })
-  } catch {
-    // beacon best-effort
   }
 }

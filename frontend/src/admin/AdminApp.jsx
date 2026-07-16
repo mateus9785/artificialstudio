@@ -3,7 +3,6 @@ import ProtectedRoute from './components/ProtectedRoute'
 import AdminLayout from './components/AdminLayout'
 import Login from './pages/Login'
 import Posts from './pages/Posts'
-import Analytics from './pages/Analytics'
 import Chat from './pages/Chat'
 import Referrals from './pages/Referrals'
 
@@ -16,7 +15,6 @@ export default function AdminApp() {
           <Route index element={<Navigate to="posts" replace />} />
           <Route path="posts" element={<Posts />} />
           <Route path="referrals" element={<Referrals />} />
-          <Route path="analytics" element={<Analytics />} />
           <Route path="chat" element={<Chat />} />
         </Route>
       </Route>

@@ -19,35 +19,6 @@ CREATE TABLE IF NOT EXISTS posts (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS consent_logs (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  session_id VARCHAR(64) NOT NULL,
-  analytics_consent BOOLEAN NOT NULL,
-  marketing_consent BOOLEAN NOT NULL,
-  ip_address VARCHAR(64),
-  user_agent VARCHAR(255),
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_consent_session (session_id)
-);
-
-CREATE TABLE IF NOT EXISTS analytics_events (
-  id BIGINT AUTO_INCREMENT PRIMARY KEY,
-  session_id VARCHAR(64) NOT NULL,
-  event_type VARCHAR(50) NOT NULL,
-  page_path VARCHAR(255),
-  referrer VARCHAR(255),
-  utm_source VARCHAR(100),
-  utm_medium VARCHAR(100),
-  utm_campaign VARCHAR(100),
-  meta JSON,
-  ip_address VARCHAR(64),
-  user_agent VARCHAR(255),
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_events_session (session_id),
-  INDEX idx_events_created (created_at),
-  INDEX idx_events_type (event_type)
-);
-
 CREATE TABLE IF NOT EXISTS chat_conversations (
   id INT AUTO_INCREMENT PRIMARY KEY,
   session_id VARCHAR(64) NOT NULL UNIQUE,

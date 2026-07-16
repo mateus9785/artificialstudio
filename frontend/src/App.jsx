@@ -7,7 +7,7 @@ import Blog from './components/Blog'
 import Footer from './components/Footer'
 import WhatsAppButton from './components/WhatsAppButton'
 import CookieConsent from './components/CookieConsent'
-import { getStoredConsent, initTrackingScripts, trackEvent } from './lib/analytics'
+import { getStoredConsent, initTrackingScripts } from './lib/analytics'
 
 export default function App() {
   const [consent, setConsent] = useState(() => getStoredConsent())
@@ -15,7 +15,6 @@ export default function App() {
   useEffect(() => {
     if (!consent) return
     initTrackingScripts(consent)
-    if (consent.analytics) trackEvent('pageview')
   }, [consent])
 
   return (

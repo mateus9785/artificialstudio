@@ -28,7 +28,15 @@ export default function Header() {
       <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
         {/* Logo */}
         <a href="#" className="flex items-center gap-2 group">
-          <img src="/logo.png" alt="Artificial Studio" className="w-8 h-8 object-contain flex-shrink-0" />
+          <img
+            src="/logo.png"
+            alt="Artificial Studio"
+            width="32"
+            height="32"
+            decoding="async"
+            fetchPriority="high"
+            className="w-8 h-8 object-contain flex-shrink-0"
+          />
           <span
             className="text-lg font-semibold tracking-tight"
             style={{ color: '#f4f4f5', letterSpacing: '-0.3px' }}
