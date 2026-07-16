@@ -5,6 +5,7 @@ import Login from './pages/Login'
 import Posts from './pages/Posts'
 import Chat from './pages/Chat'
 import Referrals from './pages/Referrals'
+import Affiliates from './pages/Affiliates'
 
 export default function AdminApp() {
   return (
@@ -15,6 +16,7 @@ export default function AdminApp() {
           <Route index element={<Navigate to="posts" replace />} />
           <Route path="posts" element={<Posts />} />
           <Route path="referrals" element={<Referrals />} />
+          <Route path="affiliates" element={<Affiliates />} />
           <Route path="chat" element={<Chat />} />
         </Route>
       </Route>
