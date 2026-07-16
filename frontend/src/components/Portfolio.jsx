@@ -835,10 +835,10 @@ function TiltCard({ project }) {
 
       {/* Card content */}
       <div className="p-6">
-        {/* Icon + Category */}
-        <div className="flex items-center justify-between mb-4">
+        {/* Icon + Title */}
+        <div className="flex items-center gap-3 mb-4">
           <div
-            className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl"
+            className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0"
             style={{
               background: `${project.accent}14`,
               border: `1px solid ${project.accent}22`,
@@ -846,25 +846,13 @@ function TiltCard({ project }) {
           >
             {project.icon}
           </div>
-          <div
-            className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium"
-            style={{
-              background: `${project.accent}12`,
-              border: `1px solid ${project.accent}25`,
-              color: project.accent,
-            }}
+          <h3
+            className="text-xl font-bold transition-colors duration-200"
+            style={{ color: hovered ? '#f4f4f5' : '#d4d4d8', letterSpacing: '-0.3px' }}
           >
             {project.category}
-          </div>
+          </h3>
         </div>
-
-        {/* Title */}
-        <h3
-          className="text-xl font-bold mb-2 transition-colors duration-200"
-          style={{ color: hovered ? '#f4f4f5' : '#d4d4d8', letterSpacing: '-0.3px' }}
-        >
-          {project.title}
-        </h3>
 
         {/* Description */}
         <p className="text-sm leading-relaxed mb-5" style={{ color: '#71717a' }}>
