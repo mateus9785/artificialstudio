@@ -98,3 +98,30 @@ CREATE TABLE IF NOT EXISTS affiliate_notifications (
   FOREIGN KEY (referral_id) REFERENCES referrals(id) ON DELETE SET NULL,
   INDEX idx_notifications_affiliate (affiliate_id)
 );
+
+CREATE TABLE IF NOT EXISTS kanban_labels (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(100) NOT NULL UNIQUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS kanban_cards (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  description TEXT NOT NULL,
+  label_id INT NOT NULL,
+  status ENUM('todo', 'doing', 'done', 'error') NOT NULL DEFAULT 'todo',
+  run_immediately BOOLEAN NOT NULL DEFAULT FALSE,
+  tmux_session VARCHAR(100),
+  error TEXT,
+  git_watch BOOLEAN NOT NULL DEFAULT FALSE,
+  base_commit VARCHAR(64),
+  auto_completed BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  started_at TIMESTAMP NULL,
+  completed_at TIMESTAMP NULL,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (label_id) REFERENCES kanban_labels(id),
+  INDEX idx_kanban_cards_status (status),
+  INDEX idx_kanban_cards_label (label_id)
+);
