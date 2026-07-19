@@ -15,9 +15,33 @@ const inputStyle = {
   color: '#e4e4e7',
 }
 
+const DEFAULT_COLOR = '#22d3ee'
+
+const COLOR_PRESETS = [
+  '#22d3ee', '#7c3aed', '#f472b6', '#f59e0b',
+  '#22c55e', '#ef4444', '#3b82f6', '#a1a1aa',
+]
+
+function ColorSwatchInput({ value, onChange, size = 20 }) {
+  return (
+    <label
+      className="relative rounded-full cursor-pointer flex-shrink-0"
+      style={{ width: size, height: size, background: value, border: '1px solid rgba(255,255,255,0.2)' }}
+    >
+      <input
+        type="color"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="absolute inset-0 opacity-0 cursor-pointer"
+      />
+    </label>
+  )
+}
+
 export default function LabelsModal({ labels, onClose, onLabelsChanged }) {
   const { handleError } = useAdminGuard()
   const [name, setName] = useState('')
+  const [color, setColor] = useState(DEFAULT_COLOR)
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -27,9 +51,10 @@ export default function LabelsModal({ labels, onClose, onLabelsChanged }) {
     if (!name.trim()) return
     setSaving(true)
     try {
-      const created = await api.post('/admin/kanban/labels', { name: name.trim() }, getAdminToken())
+      const created = await api.post('/admin/kanban/labels', { name: name.trim(), color }, getAdminToken())
       onLabelsChanged([...labels, created])
       setName('')
+      setColor(DEFAULT_COLOR)
     } catch (err) {
       if (!handleError(err)) setError(err.message || 'Não foi possível criar a etiqueta.')
     } finally {
@@ -44,6 +69,18 @@ export default function LabelsModal({ labels, onClose, onLabelsChanged }) {
       onLabelsChanged(labels.filter((l) => l.id !== label.id))
     } catch (err) {
       if (!handleError(err)) setError(err.message || 'Não foi possível excluir a etiqueta.')
+    }
+  }
+
+  async function handleColorChange(label, newColor) {
+    setError('')
+    onLabelsChanged(labels.map((l) => (l.id === label.id ? { ...l, color: newColor } : l)))
+    try {
+      const updated = await api.patch(`/admin/kanban/labels/${label.id}`, { color: newColor }, getAdminToken())
+      onLabelsChanged(labels.map((l) => (l.id === label.id ? updated : l)))
+    } catch (err) {
+      onLabelsChanged(labels)
+      if (!handleError(err)) setError(err.message || 'Não foi possível atualizar a cor.')
     }
   }
 
@@ -67,21 +104,41 @@ export default function LabelsModal({ labels, onClose, onLabelsChanged }) {
           para saber onde rodar o card.
         </p>
 
-        <form onSubmit={handleCreate} className="flex gap-2 mb-4">
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="nome-da-pasta"
-            style={inputStyle}
-          />
-          <button
-            type="submit"
-            disabled={saving}
-            className="px-4 py-2.5 rounded-xl text-sm font-medium cursor-pointer flex-shrink-0"
-            style={{ background: 'linear-gradient(135deg, #0891b2, #7c3aed)', color: 'white', opacity: saving ? 0.7 : 1 }}
-          >
-            Adicionar
-          </button>
+        <form onSubmit={handleCreate} className="flex flex-col gap-3 mb-4">
+          <div className="flex gap-2">
+            <ColorSwatchInput value={color} onChange={setColor} size={38} />
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="nome-da-pasta"
+              style={{ ...inputStyle, flex: 1 }}
+            />
+            <button
+              type="submit"
+              disabled={saving}
+              className="px-4 py-2.5 rounded-xl text-sm font-medium cursor-pointer flex-shrink-0"
+              style={{ background: 'linear-gradient(135deg, #0891b2, #7c3aed)', color: 'white', opacity: saving ? 0.7 : 1 }}
+            >
+              Adicionar
+            </button>
+          </div>
+          <div className="flex items-center gap-1.5">
+            {COLOR_PRESETS.map((preset) => (
+              <button
+                key={preset}
+                type="button"
+                onClick={() => setColor(preset)}
+                className="rounded-full cursor-pointer"
+                style={{
+                  width: 18,
+                  height: 18,
+                  background: preset,
+                  border: color === preset ? '2px solid #f4f4f5' : '1px solid rgba(255,255,255,0.2)',
+                }}
+                aria-label={`Usar cor ${preset}`}
+              />
+            ))}
+          </div>
         </form>
 
         {error && (
@@ -102,9 +159,12 @@ export default function LabelsModal({ labels, onClose, onLabelsChanged }) {
               className="flex items-center justify-between px-3 py-2 rounded-xl"
               style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
             >
-              <span className="text-sm" style={{ color: '#d4d4d8' }}>
-                {label.name}
-              </span>
+              <div className="flex items-center gap-2.5">
+                <ColorSwatchInput value={label.color || DEFAULT_COLOR} onChange={(c) => handleColorChange(label, c)} />
+                <span className="text-sm" style={{ color: '#d4d4d8' }}>
+                  {label.name}
+                </span>
+              </div>
               <button onClick={() => handleDelete(label)} className="cursor-pointer" style={{ color: '#71717a' }}>
                 <Trash2 size={14} />
               </button>

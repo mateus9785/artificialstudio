@@ -167,8 +167,12 @@ function CardView({ card, onClose }) {
           {card.description}
         </div>
 
-        <p className="text-xs mb-1" style={{ color: '#71717a' }}>
-          Etiqueta: <span style={{ color: '#d4d4d8' }}>{card.label.name}</span>
+        <p className="text-xs mb-1 flex items-center gap-1.5" style={{ color: '#71717a' }}>
+          Etiqueta:
+          <span className="inline-flex items-center gap-1.5" style={{ color: '#d4d4d8' }}>
+            <span className="inline-block w-2 h-2 rounded-full flex-shrink-0" style={{ background: card.label.color }} />
+            {card.label.name}
+          </span>
         </p>
         <p className="text-xs mb-1" style={{ color: '#71717a' }}>
           Status: <span style={{ color: STATUS_META[card.status].color }}>{STATUS_META[card.status].label}</span>
@@ -203,7 +207,7 @@ function KanbanCard({ card, onOpen, onArm, onDragStart, onDragEnd, isDragging })
       </p>
       <span
         className="inline-block text-xs mt-1.5 px-1.5 py-0.5 rounded-md"
-        style={{ background: 'rgba(255,255,255,0.06)', color: '#a1a1aa' }}
+        style={{ background: `${card.label.color}22`, color: card.label.color }}
       >
         {card.label.name}
       </span>

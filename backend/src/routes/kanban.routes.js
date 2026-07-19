@@ -5,6 +5,8 @@ import { requireAdmin } from '../middleware/requireAdmin.js'
 export const kanbanRouter = Router()
 
 const LABEL_NAME_REGEX = /^[A-Za-z0-9._-]+$/
+const LABEL_COLOR_REGEX = /^#[0-9a-fA-F]{6}$/
+const DEFAULT_LABEL_COLOR = '#22d3ee'
 const STATUSES = ['todo', 'doing', 'done', 'error']
 
 // Express 4 não encaminha rejeições de handlers async para o middleware de erro
@@ -19,6 +21,7 @@ function serializeLabel(row) {
   return {
     id: row.id,
     name: row.name,
+    color: row.color,
     createdAt: row.created_at,
   }
 }
@@ -28,7 +31,7 @@ function serializeCard(row) {
     id: row.id,
     title: row.title,
     description: row.description,
-    label: { id: row.label_id, name: row.label_name },
+    label: { id: row.label_id, name: row.label_name, color: row.label_color },
     status: row.status,
     runImmediately: Boolean(row.run_immediately),
     tmuxSession: row.tmux_session,
@@ -44,7 +47,7 @@ function serializeCard(row) {
 }
 
 const CARD_SELECT = `
-  SELECT c.*, l.name AS label_name
+  SELECT c.*, l.name AS label_name, l.color AS label_color
   FROM kanban_cards c
   JOIN kanban_labels l ON l.id = c.label_id
 `
@@ -57,7 +60,7 @@ kanbanRouter.get('/admin/kanban/labels', requireAdmin, asyncHandler(async (req, 
 }))
 
 kanbanRouter.post('/admin/kanban/labels', requireAdmin, asyncHandler(async (req, res) => {
-  const { name } = req.body || {}
+  const { name, color } = req.body || {}
 
   if (!name || !LABEL_NAME_REGEX.test(name)) {
     return res.status(400).json({
@@ -65,14 +68,34 @@ kanbanRouter.post('/admin/kanban/labels', requireAdmin, asyncHandler(async (req,
     })
   }
 
+  if (color && !LABEL_COLOR_REGEX.test(color)) {
+    return res.status(400).json({ error: 'Cor inválida. Use um hexadecimal no formato #RRGGBB.' })
+  }
+
   const [existing] = await pool.query('SELECT id FROM kanban_labels WHERE name = ?', [name])
   if (existing.length > 0) {
     return res.status(409).json({ error: 'Já existe uma etiqueta com esse nome.' })
   }
 
-  const [result] = await pool.query('INSERT INTO kanban_labels (name) VALUES (?)', [name])
+  const [result] = await pool.query('INSERT INTO kanban_labels (name, color) VALUES (?, ?)', [name, color || DEFAULT_LABEL_COLOR])
   const [rows] = await pool.query('SELECT * FROM kanban_labels WHERE id = ?', [result.insertId])
   res.status(201).json(serializeLabel(rows[0]))
+}))
+
+kanbanRouter.patch('/admin/kanban/labels/:id', requireAdmin, asyncHandler(async (req, res) => {
+  const { color } = req.body || {}
+
+  if (!color || !LABEL_COLOR_REGEX.test(color)) {
+    return res.status(400).json({ error: 'Cor inválida. Use um hexadecimal no formato #RRGGBB.' })
+  }
+
+  const [result] = await pool.query('UPDATE kanban_labels SET color = ? WHERE id = ?', [color, req.params.id])
+  if (result.affectedRows === 0) {
+    return res.status(404).json({ error: 'Etiqueta não encontrada.' })
+  }
+
+  const [rows] = await pool.query('SELECT * FROM kanban_labels WHERE id = ?', [req.params.id])
+  res.json(serializeLabel(rows[0]))
 }))
 
 kanbanRouter.delete('/admin/kanban/labels/:id', requireAdmin, asyncHandler(async (req, res) => {
