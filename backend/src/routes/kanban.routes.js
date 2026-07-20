@@ -359,6 +359,15 @@ function isValidPercent(value) {
   return value === null || value === undefined || (typeof value === 'number' && value >= 0 && value <= 100)
 }
 
+// Converte string ISO 8601 (ex: '2026-07-20T18:20:00.000Z') em Date, já que o
+// driver mysql2 rejeita o formato com 'T'/'Z' passado direto como string
+// (ER_TRUNCATED_WRONG_VALUE em modo estrito). Retorna undefined se inválida.
+function toDateOrNull(value) {
+  if (value === null || value === undefined) return null
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? undefined : date
+}
+
 kanbanRouter.get('/admin/kanban/claude-usage', requireAdmin, asyncHandler(async (req, res) => {
   const [rows] = await pool.query('SELECT * FROM claude_usage WHERE id = 1')
   res.json(serializeUsage(rows[0]))
@@ -371,6 +380,12 @@ kanbanRouter.post('/admin/kanban/claude-usage', requireAdmin, asyncHandler(async
     return res.status(400).json({ error: 'Percentual de uso inválido.' })
   }
 
+  const sessionResetsAtDate = toDateOrNull(sessionResetsAt)
+  const weekResetsAtDate = toDateOrNull(weekResetsAt)
+  if (sessionResetsAtDate === undefined || weekResetsAtDate === undefined) {
+    return res.status(400).json({ error: 'Data de reset inválida.' })
+  }
+
   await pool.query(
     `INSERT INTO claude_usage (id, session_used_percent, session_resets_at, week_used_percent, week_resets_at)
      VALUES (1, ?, ?, ?, ?)
@@ -379,7 +394,7 @@ kanbanRouter.post('/admin/kanban/claude-usage', requireAdmin, asyncHandler(async
        session_resets_at = VALUES(session_resets_at),
        week_used_percent = VALUES(week_used_percent),
        week_resets_at = VALUES(week_resets_at)`,
-    [sessionUsedPercent ?? null, sessionResetsAt ?? null, weekUsedPercent ?? null, weekResetsAt ?? null],
+    [sessionUsedPercent ?? null, sessionResetsAtDate, weekUsedPercent ?? null, weekResetsAtDate],
   )
   res.status(204).end()
 }))
