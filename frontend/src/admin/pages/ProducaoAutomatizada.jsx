@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { X, Tag } from 'lucide-react'
+import { X, Tag, Trash2 } from 'lucide-react'
 import { api } from '../../lib/api'
 import { getAdminToken } from '../../lib/adminAuth'
 import { useAdminGuard } from '../useAdminGuard'
@@ -147,7 +147,7 @@ function CardForm({ card, labels, onCancel, onSaved, onManageLabels, onDelete })
   )
 }
 
-function CardView({ card, onClose }) {
+function CardView({ card, onClose, onDelete }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.6)' }}>
       <div
@@ -183,26 +183,52 @@ function CardView({ card, onClose }) {
             {card.error}
           </p>
         )}
+
+        {card.status !== 'doing' && (
+          <div className="flex mt-5">
+            <button
+              type="button"
+              onClick={() => onDelete(card)}
+              className="ml-auto px-4 py-2.5 rounded-xl text-sm font-medium cursor-pointer"
+              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: '#f87171' }}
+            >
+              Excluir
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )
 }
 
-function KanbanCard({ card, onOpen, onArm, onDragStart, onDragEnd, isDragging }) {
+function KanbanCard({ card, onOpen, onArm, onDelete, onDragStart, onDragEnd, isDragging }) {
   return (
     <div
       draggable
       onDragStart={() => onDragStart(card)}
       onDragEnd={onDragEnd}
       onClick={() => onOpen(card)}
-      className="p-3.5 rounded-xl cursor-grab"
+      className="relative p-3.5 rounded-xl cursor-grab"
       style={{
         background: 'rgba(255,255,255,0.03)',
         border: '1px solid rgba(255,255,255,0.06)',
         opacity: isDragging ? 0.4 : 1,
       }}
     >
-      <p className="text-sm font-medium truncate" style={{ color: '#e4e4e7' }}>
+      {card.status !== 'doing' && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            onDelete(card)
+          }}
+          className="absolute top-2.5 right-2.5 cursor-pointer p-0.5"
+          style={{ color: '#52525b' }}
+          aria-label="Excluir card"
+        >
+          <Trash2 size={13} />
+        </button>
+      )}
+      <p className="text-sm font-medium truncate pr-5" style={{ color: '#e4e4e7' }}>
         {card.title}
       </p>
       <span
@@ -396,6 +422,7 @@ export default function ProducaoAutomatizada() {
                       card={card}
                       onOpen={setViewing}
                       onArm={handleArm}
+                      onDelete={handleDelete}
                       onDragStart={setDragging}
                       onDragEnd={() => setDragging(null)}
                       isDragging={dragging?.id === card.id}
@@ -428,7 +455,9 @@ export default function ProducaoAutomatizada() {
         />
       )}
 
-      {viewing && viewing.status !== 'todo' && <CardView card={viewing} onClose={() => setViewing(null)} />}
+      {viewing && viewing.status !== 'todo' && (
+        <CardView card={viewing} onClose={() => setViewing(null)} onDelete={handleDelete} />
+      )}
 
       {managingLabels && (
         <LabelsModal labels={labels} onClose={() => setManagingLabels(false)} onLabelsChanged={setLabels} />

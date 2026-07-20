@@ -70,9 +70,9 @@ export default function Chat() {
         Conversas
       </h1>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4" style={{ height: '70vh' }}>
+      <div className="flex flex-col lg:grid lg:grid-cols-[280px_1fr] gap-4 lg:h-[70vh]">
         <div
-          className="rounded-xl overflow-y-auto"
+          className="h-48 lg:h-auto flex-shrink-0 rounded-xl overflow-y-auto"
           style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
         >
           {conversations.length === 0 && (
@@ -111,7 +111,7 @@ export default function Chat() {
         </div>
 
         <div
-          className="rounded-xl flex flex-col overflow-hidden"
+          className="h-[60vh] lg:h-auto flex-1 min-h-0 rounded-xl flex flex-col overflow-hidden"
           style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
         >
           {!selected ? (

@@ -165,7 +165,23 @@ async function loadEditableCard(req, res) {
     return null
   }
   if (card.status !== 'todo') {
-    res.status(409).json({ error: 'Só é possível editar ou excluir cards em "Para Fazer".' })
+    res.status(409).json({ error: 'Só é possível editar cards em "Para Fazer".' })
+    return null
+  }
+  return card
+}
+
+const DELETABLE_STATUSES = ['todo', 'done', 'error']
+
+async function loadDeletableCard(req, res) {
+  const [rows] = await pool.query('SELECT * FROM kanban_cards WHERE id = ?', [req.params.id])
+  const card = rows[0]
+  if (!card) {
+    res.status(404).json({ error: 'Card não encontrado.' })
+    return null
+  }
+  if (!DELETABLE_STATUSES.includes(card.status)) {
+    res.status(409).json({ error: 'Não é possível excluir um card em "Fazendo".' })
     return null
   }
   return card
@@ -199,7 +215,7 @@ kanbanRouter.patch('/admin/kanban/cards/:id', requireAdmin, asyncHandler(async (
 }))
 
 kanbanRouter.delete('/admin/kanban/cards/:id', requireAdmin, asyncHandler(async (req, res) => {
-  const card = await loadEditableCard(req, res)
+  const card = await loadDeletableCard(req, res)
   if (!card) return
 
   await pool.query('DELETE FROM kanban_cards WHERE id = ?', [card.id])
