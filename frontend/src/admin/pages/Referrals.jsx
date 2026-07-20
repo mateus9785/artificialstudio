@@ -114,7 +114,7 @@ function ReferralForm({ referral, onCancel, onSaved }) {
             </select>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="text-xs font-medium block mb-1.5" style={{ color: '#a1a1aa' }}>
                 Tipo de comissão

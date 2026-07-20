@@ -163,7 +163,7 @@ function PostForm({ initial, onCancel, onSaved }) {
             </div>
           </Field>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Tag">
               <input value={form.tag} onChange={(e) => update('tag', e.target.value)} required style={inputStyle} />
             </Field>

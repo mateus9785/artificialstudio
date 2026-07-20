@@ -326,7 +326,7 @@ export default function ProducaoAutomatizada() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between mb-6 flex-shrink-0">
+      <div className="flex items-center justify-between flex-wrap gap-3 mb-6 flex-shrink-0">
         <h1 className="text-xl font-semibold" style={{ color: '#f4f4f5' }}>
           Produção Automatizada
         </h1>

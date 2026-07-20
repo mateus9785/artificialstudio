@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { FileText, LogOut, Handshake, Users, ChevronsLeft, ChevronsRight, KeyRound, KanbanSquare } from 'lucide-react'
+import { FileText, LogOut, Handshake, Users, ChevronsLeft, ChevronsRight, KeyRound, KanbanSquare, Menu, X } from 'lucide-react'
 import { clearAdminSession } from '../../lib/adminAuth'
 import ChangePasswordModal from './ChangePasswordModal'
 
@@ -17,6 +17,7 @@ export default function AdminLayout() {
   const navigate = useNavigate()
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(COLLAPSE_KEY) === '1')
   const [showChangePassword, setShowChangePassword] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
 
   function toggleCollapsed() {
     setCollapsed((prev) => {
@@ -31,19 +32,46 @@ export default function AdminLayout() {
     navigate('/admin/login', { replace: true })
   }
 
+  const effectiveCollapsed = collapsed && !mobileOpen
+
   return (
     <div className="h-screen flex overflow-hidden" style={{ background: '#050505' }}>
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-30 md:hidden"
+          style={{ background: 'rgba(0,0,0,0.6)' }}
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
       <aside
-        className="flex-shrink-0 flex flex-col p-4 transition-[width] duration-200"
-        style={{ borderRight: '1px solid rgba(255,255,255,0.06)', width: collapsed ? '76px' : '240px' }}
+        className={`fixed md:relative inset-y-0 left-0 z-40 flex-shrink-0 flex flex-col p-4 h-full ${
+          mobileOpen ? 'translate-x-0' : '-translate-x-full'
+        } md:translate-x-0`}
+        style={{
+          background: '#050505',
+          borderRight: '1px solid rgba(255,255,255,0.06)',
+          width: effectiveCollapsed ? '76px' : '240px',
+          transition: 'width 200ms, transform 200ms',
+        }}
       >
-        <div className={`flex items-center mb-8 mt-2 ${collapsed ? 'justify-center' : 'gap-2 px-2'}`}>
-          <img src="/logo.png" alt="Artificial Studio" className="w-8 h-8 object-contain flex-shrink-0" />
-          {!collapsed && (
-            <span className="text-sm font-semibold truncate" style={{ color: '#f4f4f5' }}>
-              Admin
-            </span>
-          )}
+        <div className={`flex items-center justify-between mb-8 mt-2 ${effectiveCollapsed ? 'justify-center' : 'px-2'}`}>
+          <div className="flex items-center gap-2 min-w-0">
+            <img src="/logo.png" alt="Artificial Studio" className="w-8 h-8 object-contain flex-shrink-0" />
+            {!effectiveCollapsed && (
+              <span className="text-sm font-semibold truncate" style={{ color: '#f4f4f5' }}>
+                Admin
+              </span>
+            )}
+          </div>
+          <button
+            onClick={() => setMobileOpen(false)}
+            className="md:hidden cursor-pointer p-1"
+            style={{ color: '#a1a1aa' }}
+            aria-label="Fechar menu"
+          >
+            <X size={18} />
+          </button>
         </div>
 
         <nav className="flex flex-col gap-1 flex-1">
@@ -51,9 +79,10 @@ export default function AdminLayout() {
             <NavLink
               key={to}
               to={to}
-              title={collapsed ? label : undefined}
+              title={effectiveCollapsed ? label : undefined}
+              onClick={() => setMobileOpen(false)}
               className={`flex items-center gap-2.5 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                collapsed ? 'justify-center px-0' : 'px-3'
+                effectiveCollapsed ? 'justify-center px-0' : 'px-3'
               }`}
               style={({ isActive }) => ({
                 background: isActive ? 'rgba(34,211,238,0.08)' : 'transparent',
@@ -61,7 +90,7 @@ export default function AdminLayout() {
               })}
             >
               <Icon size={16} />
-              {!collapsed && label}
+              {!effectiveCollapsed && label}
             </NavLink>
           ))}
         </nav>
@@ -70,7 +99,7 @@ export default function AdminLayout() {
           <button
             onClick={toggleCollapsed}
             title={collapsed ? 'Expandir menu' : 'Recolher menu'}
-            className={`w-full flex items-center gap-2.5 py-2.5 rounded-xl text-sm font-medium cursor-pointer transition-colors mb-1 ${
+            className={`hidden md:flex w-full items-center gap-2.5 py-2.5 rounded-xl text-sm font-medium cursor-pointer transition-colors mb-1 ${
               collapsed ? 'justify-center px-0' : 'px-3'
             }`}
             style={{ color: '#a1a1aa' }}
@@ -83,36 +112,56 @@ export default function AdminLayout() {
 
           <button
             onClick={() => setShowChangePassword(true)}
-            title={collapsed ? 'Alterar senha' : undefined}
+            title={effectiveCollapsed ? 'Alterar senha' : undefined}
             className={`w-full flex items-center gap-2.5 py-2.5 rounded-xl text-sm font-medium cursor-pointer transition-colors mb-1 ${
-              collapsed ? 'justify-center px-0' : 'px-3'
+              effectiveCollapsed ? 'justify-center px-0' : 'px-3'
             }`}
             style={{ color: '#a1a1aa' }}
             onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
             onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
           >
             <KeyRound size={16} />
-            {!collapsed && 'Alterar senha'}
+            {!effectiveCollapsed && 'Alterar senha'}
           </button>
           <button
             onClick={handleLogout}
-            title={collapsed ? 'Sair' : undefined}
+            title={effectiveCollapsed ? 'Sair' : undefined}
             className={`w-full flex items-center gap-2.5 py-2.5 rounded-xl text-sm font-medium cursor-pointer transition-colors ${
-              collapsed ? 'justify-center px-0' : 'px-3'
+              effectiveCollapsed ? 'justify-center px-0' : 'px-3'
             }`}
             style={{ color: '#a1a1aa' }}
             onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
             onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
           >
             <LogOut size={16} />
-            {!collapsed && 'Sair'}
+            {!effectiveCollapsed && 'Sair'}
           </button>
         </div>
       </aside>
 
-      <main className="flex-1 min-w-0 overflow-y-auto p-8">
-        <Outlet />
-      </main>
+      <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
+        <div
+          className="md:hidden flex items-center gap-3 px-4 py-3 flex-shrink-0"
+          style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
+        >
+          <button
+            onClick={() => setMobileOpen(true)}
+            className="cursor-pointer p-1"
+            style={{ color: '#a1a1aa' }}
+            aria-label="Abrir menu"
+          >
+            <Menu size={20} />
+          </button>
+          <img src="/logo.png" alt="Artificial Studio" className="w-6 h-6 object-contain flex-shrink-0" />
+          <span className="text-sm font-semibold truncate" style={{ color: '#f4f4f5' }}>
+            Admin
+          </span>
+        </div>
+
+        <main className="flex-1 min-w-0 overflow-y-auto p-4 md:p-8">
+          <Outlet />
+        </main>
+      </div>
 
       {showChangePassword && <ChangePasswordModal onClose={() => setShowChangePassword(false)} />}
     </div>
