@@ -16,6 +16,17 @@ const inputStyle = {
   color: '#e4e4e7',
 }
 
+const selectStyle = {
+  ...inputStyle,
+  colorScheme: 'dark',
+  cursor: 'pointer',
+}
+
+const optionStyle = {
+  background: '#0a0a0a',
+  color: '#e4e4e7',
+}
+
 function formatCurrency(value) {
   if (value === null || value === undefined) return '—'
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -105,9 +116,9 @@ function ReferralForm({ referral, onCancel, onSaved }) {
             <label className="text-xs font-medium block mb-1.5" style={{ color: '#a1a1aa' }}>
               Status
             </label>
-            <select value={status} onChange={(e) => setStatus(e.target.value)} style={inputStyle}>
+            <select value={status} onChange={(e) => setStatus(e.target.value)} style={selectStyle}>
               {STATUS_ORDER.map((value) => (
-                <option key={value} value={value}>
+                <option key={value} value={value} style={optionStyle}>
                   {STATUS_META[value].label}
                 </option>
               ))}
@@ -119,9 +130,9 @@ function ReferralForm({ referral, onCancel, onSaved }) {
               <label className="text-xs font-medium block mb-1.5" style={{ color: '#a1a1aa' }}>
                 Tipo de comissão
               </label>
-              <select value={commissionType} onChange={(e) => handleCommissionTypeChange(e.target.value)} style={inputStyle}>
+              <select value={commissionType} onChange={(e) => handleCommissionTypeChange(e.target.value)} style={selectStyle}>
                 {Object.entries(COMMISSION_TYPE_LABELS).map(([value, label]) => (
-                  <option key={value} value={value}>
+                  <option key={value} value={value} style={optionStyle}>
                     {label}
                   </option>
                 ))}

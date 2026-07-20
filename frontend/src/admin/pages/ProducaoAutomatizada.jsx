@@ -17,12 +17,23 @@ const inputStyle = {
   color: '#e4e4e7',
 }
 
+const selectStyle = {
+  ...inputStyle,
+  colorScheme: 'dark',
+  cursor: 'pointer',
+}
+
+const optionStyle = {
+  background: '#0a0a0a',
+  color: '#e4e4e7',
+}
+
 function CardForm({ card, labels, onCancel, onSaved, onManageLabels, onDelete }) {
   const { handleError } = useAdminGuard()
   const isNew = !card
   const [title, setTitle] = useState(card?.title ?? '')
   const [description, setDescription] = useState(card?.description ?? '')
-  const [labelId, setLabelId] = useState(card?.label?.id ?? labels[0]?.id ?? '')
+  const [labelId, setLabelId] = useState(card?.label?.id ?? '')
   const [runImmediately, setRunImmediately] = useState(card?.runImmediately ?? false)
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
@@ -92,10 +103,11 @@ function CardForm({ card, labels, onCancel, onSaved, onManageLabels, onDelete })
                 <Tag size={12} /> Gerenciar etiquetas
               </button>
             </div>
-            <select value={labelId} onChange={(e) => setLabelId(e.target.value)} style={inputStyle}>
-              {labels.length === 0 && <option value="">Nenhuma etiqueta cadastrada</option>}
+            <select value={labelId} onChange={(e) => setLabelId(e.target.value)} style={selectStyle}>
+              {labels.length === 0 && <option value="" style={optionStyle}>Nenhuma etiqueta cadastrada</option>}
+              {labels.length > 0 && <option value="" style={optionStyle}>Selecione uma etiqueta</option>}
               {labels.map((label) => (
-                <option key={label.id} value={label.id}>
+                <option key={label.id} value={label.id} style={optionStyle}>
                   {label.name}
                 </option>
               ))}
