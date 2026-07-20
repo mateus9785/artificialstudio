@@ -341,3 +341,45 @@ kanbanRouter.post('/admin/kanban/cards/:id/mark-error', requireAdmin, asyncHandl
   }
   res.status(204).end()
 }))
+
+// ---- Uso do Claude Code (sessão de 5h / semana), reportado pelo worker local ----
+
+function serializeUsage(row) {
+  if (!row) return null
+  return {
+    sessionUsedPercent: row.session_used_percent === null ? null : Number(row.session_used_percent),
+    sessionResetsAt: row.session_resets_at,
+    weekUsedPercent: row.week_used_percent === null ? null : Number(row.week_used_percent),
+    weekResetsAt: row.week_resets_at,
+    updatedAt: row.updated_at,
+  }
+}
+
+function isValidPercent(value) {
+  return value === null || value === undefined || (typeof value === 'number' && value >= 0 && value <= 100)
+}
+
+kanbanRouter.get('/admin/kanban/claude-usage', requireAdmin, asyncHandler(async (req, res) => {
+  const [rows] = await pool.query('SELECT * FROM claude_usage WHERE id = 1')
+  res.json(serializeUsage(rows[0]))
+}))
+
+kanbanRouter.post('/admin/kanban/claude-usage', requireAdmin, asyncHandler(async (req, res) => {
+  const { sessionUsedPercent, sessionResetsAt, weekUsedPercent, weekResetsAt } = req.body || {}
+
+  if (!isValidPercent(sessionUsedPercent) || !isValidPercent(weekUsedPercent)) {
+    return res.status(400).json({ error: 'Percentual de uso inválido.' })
+  }
+
+  await pool.query(
+    `INSERT INTO claude_usage (id, session_used_percent, session_resets_at, week_used_percent, week_resets_at)
+     VALUES (1, ?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE
+       session_used_percent = VALUES(session_used_percent),
+       session_resets_at = VALUES(session_resets_at),
+       week_used_percent = VALUES(week_used_percent),
+       week_resets_at = VALUES(week_resets_at)`,
+    [sessionUsedPercent ?? null, sessionResetsAt ?? null, weekUsedPercent ?? null, weekResetsAt ?? null],
+  )
+  res.status(204).end()
+}))

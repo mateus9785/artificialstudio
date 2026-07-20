@@ -128,3 +128,14 @@ CREATE TABLE IF NOT EXISTS kanban_cards (
   INDEX idx_kanban_cards_status (status),
   INDEX idx_kanban_cards_label (label_id)
 );
+
+-- Linha única (id fixo 1) com o snapshot mais recente de uso do plano Claude
+-- Code (sessão de 5h e semana), reportado pelo worker local claude-kanban.
+CREATE TABLE IF NOT EXISTS claude_usage (
+  id TINYINT PRIMARY KEY DEFAULT 1,
+  session_used_percent DECIMAL(5,2),
+  session_resets_at TIMESTAMP NULL,
+  week_used_percent DECIMAL(5,2),
+  week_resets_at TIMESTAMP NULL,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);

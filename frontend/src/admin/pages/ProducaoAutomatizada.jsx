@@ -266,12 +266,76 @@ function KanbanCard({ card, onOpen, onArm, onDelete, onDragStart, onDragEnd, isD
   )
 }
 
+function usageBarColor(percent) {
+  if (percent === null || percent === undefined) return '#3f3f46'
+  if (percent >= 90) return '#f87171'
+  if (percent >= 70) return '#f59e0b'
+  return '#22d3ee'
+}
+
+function formatResetsAt(value) {
+  if (!value) return null
+  return new Date(value).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+}
+
+function UsageBar({ label, percent, resetsAt }) {
+  const hasData = percent !== null && percent !== undefined
+  const color = usageBarColor(percent)
+  return (
+    <div className="flex-1 min-w-[180px]">
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-xs font-medium" style={{ color: '#a1a1aa' }}>
+          {label}
+        </span>
+        <span className="text-xs font-semibold" style={{ color }}>
+          {hasData ? `${Math.round(percent)}%` : '—'}
+        </span>
+      </div>
+      <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
+        <div
+          className="h-full rounded-full"
+          style={{ width: `${hasData ? Math.min(percent, 100) : 0}%`, background: color, transition: 'width 300ms ease' }}
+        />
+      </div>
+      {resetsAt && (
+        <p className="text-xs mt-1" style={{ color: '#52525b' }}>
+          Reinicia em {formatResetsAt(resetsAt)}
+        </p>
+      )}
+    </div>
+  )
+}
+
+function ClaudeUsagePanel({ usage }) {
+  if (!usage) {
+    return (
+      <div
+        className="p-3.5 rounded-xl mb-6 flex-shrink-0 text-xs"
+        style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', color: '#52525b' }}
+      >
+        Uso do Claude Code ainda sem dados — aparece assim que o worker rodar o primeiro card.
+      </div>
+    )
+  }
+
+  return (
+    <div
+      className="p-3.5 rounded-xl mb-6 flex-shrink-0 flex items-center gap-6 flex-wrap"
+      style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
+    >
+      <UsageBar label="Uso do Claude Code (sessão de 5h)" percent={usage.sessionUsedPercent} resetsAt={usage.sessionResetsAt} />
+      <UsageBar label="Uso do Claude Code (semana)" percent={usage.weekUsedPercent} resetsAt={usage.weekResetsAt} />
+    </div>
+  )
+}
+
 const POLL_MS = 3000
 
 export default function ProducaoAutomatizada() {
   const { handleError } = useAdminGuard()
   const [cards, setCards] = useState([])
   const [labels, setLabels] = useState([])
+  const [usage, setUsage] = useState(null)
   const [status, setStatus] = useState('loading')
   const [creating, setCreating] = useState(false)
   const [viewing, setViewing] = useState(null)
@@ -282,10 +346,15 @@ export default function ProducaoAutomatizada() {
 
   function loadAll({ silent } = {}) {
     if (!silent) setStatus('loading')
-    Promise.all([api.get('/admin/kanban/cards', getAdminToken()), api.get('/admin/kanban/labels', getAdminToken())])
-      .then(([cardsData, labelsData]) => {
+    Promise.all([
+      api.get('/admin/kanban/cards', getAdminToken()),
+      api.get('/admin/kanban/labels', getAdminToken()),
+      api.get('/admin/kanban/claude-usage', getAdminToken()),
+    ])
+      .then(([cardsData, labelsData, usageData]) => {
         setCards(cardsData)
         setLabels(labelsData)
+        setUsage(usageData)
         setStatus('ready')
       })
       .catch((err) => {
@@ -373,6 +442,8 @@ export default function ProducaoAutomatizada() {
           </button>
         </div>
       </div>
+
+      <ClaudeUsagePanel usage={usage} />
 
       {status === 'loading' && <p style={{ color: '#52525b' }}>Carregando...</p>}
       {status === 'error' && <p style={{ color: '#f87171' }}>Não foi possível carregar os cards.</p>}
