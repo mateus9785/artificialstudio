@@ -7,6 +7,7 @@ import { postsRouter } from './routes/posts.routes.js'
 import { chatRouter } from './routes/chat.routes.js'
 import { affiliatesRouter } from './routes/affiliates.routes.js'
 import { kanbanRouter } from './routes/kanban.routes.js'
+import { financeiroRouter } from './routes/financeiro.routes.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -35,6 +36,7 @@ app.use('/api', postsRouter)
 app.use('/api', chatRouter)
 app.use('/api', affiliatesRouter)
 app.use('/api', kanbanRouter)
+app.use('/api', financeiroRouter)
 
 app.use((err, req, res, next) => {
   console.error(err)

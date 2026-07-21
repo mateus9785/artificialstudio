@@ -7,6 +7,7 @@ import Chat from './pages/Chat'
 import Referrals from './pages/Referrals'
 import Affiliates from './pages/Affiliates'
 import ProducaoAutomatizada from './pages/ProducaoAutomatizada'
+import Financeiro from './pages/Financeiro'
 
 export default function AdminApp() {
   return (
@@ -20,6 +21,7 @@ export default function AdminApp() {
           <Route path="affiliates" element={<Affiliates />} />
           <Route path="chat" element={<Chat />} />
           <Route path="producao-automatizada" element={<ProducaoAutomatizada />} />
+          <Route path="financeiro" element={<Financeiro />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="posts" replace />} />

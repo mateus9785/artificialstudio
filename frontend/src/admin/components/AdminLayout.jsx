@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom'
-import { FileText, LogOut, Handshake, Users, ChevronsLeft, ChevronsRight, KeyRound, KanbanSquare, Menu, X } from 'lucide-react'
+import { FileText, LogOut, Handshake, Users, ChevronsLeft, ChevronsRight, KeyRound, KanbanSquare, Wallet, Menu, X } from 'lucide-react'
 import { clearAdminSession } from '../../lib/adminAuth'
 import ChangePasswordModal from './ChangePasswordModal'
 
@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { to: '/admin/referrals', label: 'Indicações', icon: Handshake },
   { to: '/admin/affiliates', label: 'Afiliados', icon: Users },
   { to: '/admin/producao-automatizada', label: 'Produção Automatizada', icon: KanbanSquare },
+  { to: '/admin/financeiro', label: 'Financeiro', icon: Wallet },
 ]
 
 const COLLAPSE_KEY = 'admin_sidebar_collapsed'

@@ -147,3 +147,15 @@ CREATE TABLE IF NOT EXISTS claude_usage (
   week_resets_at TIMESTAMP NULL,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS financeiro_lancamentos (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  type ENUM('entrada', 'saida') NOT NULL,
+  description VARCHAR(255) NOT NULL,
+  amount DECIMAL(10, 2) NOT NULL,
+  occurred_on DATE NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_financeiro_occurred_on (occurred_on),
+  INDEX idx_financeiro_type (type)
+);
