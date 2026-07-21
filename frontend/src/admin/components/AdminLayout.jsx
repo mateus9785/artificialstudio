@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { FileText, LogOut, Handshake, Users, ChevronsLeft, ChevronsRight, KeyRound, KanbanSquare, Menu, X } from 'lucide-react'
 import { clearAdminSession } from '../../lib/adminAuth'
 import ChangePasswordModal from './ChangePasswordModal'
@@ -15,6 +15,8 @@ const COLLAPSE_KEY = 'admin_sidebar_collapsed'
 
 export default function AdminLayout() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const isProducaoAutomatizada = location.pathname.startsWith('/admin/producao-automatizada')
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(COLLAPSE_KEY) === '1')
   const [showChangePassword, setShowChangePassword] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -153,8 +155,14 @@ export default function AdminLayout() {
             <Menu size={20} />
           </button>
           <img src="/logo.png" alt="Artificial Studio" className="w-6 h-6 object-contain flex-shrink-0" />
-          <span className="text-sm font-semibold truncate" style={{ color: '#f4f4f5' }}>
+          <span className="text-sm font-semibold truncate flex items-center gap-1.5 min-w-0" style={{ color: '#f4f4f5' }}>
             Admin
+            {isProducaoAutomatizada && (
+              <>
+                <span className="flex-shrink-0" style={{ color: '#3f3f46' }}>/</span>
+                <span className="truncate" style={{ color: '#a1a1aa' }}>Produção Automatizada</span>
+              </>
+            )}
           </span>
         </div>
 

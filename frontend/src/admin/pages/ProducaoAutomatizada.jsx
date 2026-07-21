@@ -318,16 +318,17 @@ function formatResetsAt(value) {
   return new Date(value).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
 }
 
-function UsageBar({ label, percent, resetsAt }) {
+function UsageBar({ label, shortLabel, percent, resetsAt }) {
   const hasData = percent !== null && percent !== undefined
   const color = usageBarColor(percent)
   return (
-    <div className="flex-1 min-w-[180px]">
-      <div className="flex items-center justify-between mb-1">
-        <span className="text-xs font-medium" style={{ color: '#a1a1aa' }}>
-          {label}
+    <div className="flex-1 min-w-0 sm:min-w-[180px]">
+      <div className="flex items-center justify-between mb-1 gap-2">
+        <span className="text-xs font-medium truncate" style={{ color: '#a1a1aa' }}>
+          <span className="hidden sm:inline">{label}</span>
+          <span className="sm:hidden">{shortLabel}</span>
         </span>
-        <span className="text-xs font-semibold" style={{ color }}>
+        <span className="text-xs font-semibold flex-shrink-0" style={{ color }}>
           {hasData ? `${Math.round(percent)}%` : '—'}
         </span>
       </div>
@@ -338,8 +339,9 @@ function UsageBar({ label, percent, resetsAt }) {
         />
       </div>
       {resetsAt && (
-        <p className="text-xs mt-1" style={{ color: '#52525b' }}>
-          Reinicia em {formatResetsAt(resetsAt)}
+        <p className="text-xs mt-1 truncate" style={{ color: '#52525b' }}>
+          <span className="hidden sm:inline">Reinicia em </span>
+          {formatResetsAt(resetsAt)}
         </p>
       )}
     </div>
@@ -360,11 +362,21 @@ function ClaudeUsagePanel({ usage }) {
 
   return (
     <div
-      className="p-3.5 rounded-xl mb-6 flex-shrink-0 flex items-center gap-6 flex-wrap"
+      className="p-3.5 rounded-xl mb-6 flex-shrink-0 flex items-center gap-3 sm:gap-6 flex-nowrap sm:flex-wrap"
       style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
     >
-      <UsageBar label="Uso do Claude Code (sessão de 5h)" percent={usage.sessionUsedPercent} resetsAt={usage.sessionResetsAt} />
-      <UsageBar label="Uso do Claude Code (semana)" percent={usage.weekUsedPercent} resetsAt={usage.weekResetsAt} />
+      <UsageBar
+        label="Uso do Claude Code (sessão de 5h)"
+        shortLabel="Sessão (5h)"
+        percent={usage.sessionUsedPercent}
+        resetsAt={usage.sessionResetsAt}
+      />
+      <UsageBar
+        label="Uso do Claude Code (semana)"
+        shortLabel="Semana"
+        percent={usage.weekUsedPercent}
+        resetsAt={usage.weekResetsAt}
+      />
     </div>
   )
 }
@@ -471,7 +483,7 @@ export default function ProducaoAutomatizada() {
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between flex-wrap gap-3 mb-6 flex-shrink-0">
-        <h1 className="text-xl font-semibold" style={{ color: '#f4f4f5' }}>
+        <h1 className="hidden sm:block text-xl font-semibold" style={{ color: '#f4f4f5' }}>
           Produção Automatizada
         </h1>
         <div className="flex items-center gap-3">
@@ -498,7 +510,7 @@ export default function ProducaoAutomatizada() {
       {status === 'error' && <p style={{ color: '#f87171' }}>Não foi possível carregar os cards.</p>}
 
       {status === 'ready' && (
-        <div className="flex gap-4 overflow-x-auto flex-1 min-h-0 pb-3">
+        <div className="flex gap-4 overflow-x-auto flex-1 min-h-0 pb-3 snap-x snap-mandatory sm:snap-none">
           {STATUS_ORDER.map((columnStatus) => {
             const meta = STATUS_META[columnStatus]
             const columnCards = cards.filter((c) => c.status === columnStatus)
@@ -511,7 +523,7 @@ export default function ProducaoAutomatizada() {
                 }}
                 onDragLeave={() => setDragOverColumn((prev) => (prev === columnStatus ? null : prev))}
                 onDrop={() => handleDrop(columnStatus)}
-                className="flex-shrink-0 w-72 h-full flex flex-col rounded-xl"
+                className="flex-shrink-0 w-[calc(100vw-2rem)] sm:w-72 h-full flex flex-col rounded-xl snap-center sm:snap-align-none"
                 style={{
                   background: dragOverColumn === columnStatus ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.015)',
                   border: `1px solid ${dragOverColumn === columnStatus ? meta.color : 'rgba(255,255,255,0.06)'}`,
