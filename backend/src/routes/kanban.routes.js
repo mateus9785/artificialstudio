@@ -9,6 +9,11 @@ const LABEL_COLOR_REGEX = /^#[0-9a-fA-F]{6}$/
 const DEFAULT_LABEL_COLOR = '#22d3ee'
 const STATUSES = ['todo', 'doing', 'done', 'error']
 
+// Quantos cards podem estar "doing" ao mesmo tempo — o worker local roda uma
+// sessão tmux por card, então isso também limita quantas sessões `claude`
+// concorrentes a máquina do worker sustenta.
+const MAX_CONCURRENT_CARDS = Number(process.env.KANBAN_MAX_CONCURRENT_CARDS) || 3
+
 // Express 4 não encaminha rejeições de handlers async para o middleware de erro
 // sozinho — sem isso, qualquer erro (ex: deadlock do MySQL) derruba o processo inteiro.
 function asyncHandler(fn) {
@@ -273,7 +278,7 @@ kanbanRouter.post('/admin/kanban/claim-next', requireAdmin, asyncHandler(async (
     await conn.beginTransaction()
 
     const [doingRows] = await conn.query("SELECT id FROM kanban_cards WHERE status = 'doing' FOR UPDATE")
-    if (doingRows.length > 0) {
+    if (doingRows.length >= MAX_CONCURRENT_CARDS) {
       await conn.rollback()
       return res.json({ card: null })
     }
