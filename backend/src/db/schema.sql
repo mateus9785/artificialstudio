@@ -114,6 +114,8 @@ CREATE TABLE IF NOT EXISTS kanban_cards (
   description TEXT NOT NULL,
   label_id INT NOT NULL,
   status ENUM('todo', 'doing', 'done', 'error') NOT NULL DEFAULT 'todo',
+  plan_status ENUM('none', 'requested', 'planning', 'error') NOT NULL DEFAULT 'none',
+  plan_error TEXT,
   run_immediately BOOLEAN NOT NULL DEFAULT FALSE,
   tmux_session VARCHAR(100),
   error TEXT,
@@ -128,6 +130,12 @@ CREATE TABLE IF NOT EXISTS kanban_cards (
   INDEX idx_kanban_cards_status (status),
   INDEX idx_kanban_cards_label (label_id)
 );
+
+-- Card "Planejar" (produção automatizada): reescreve a descrição via um
+-- claim-next-to-plan/plan-result análogo ao do fluxo de execução, processado
+-- pelo worker local (claude-kanban) rodando `claude -p` em modo leitura.
+ALTER TABLE kanban_cards ADD COLUMN plan_status ENUM('none', 'requested', 'planning', 'error') NOT NULL DEFAULT 'none' AFTER status;
+ALTER TABLE kanban_cards ADD COLUMN plan_error TEXT AFTER error;
 
 -- Linha única (id fixo 1) com o snapshot mais recente de uso do plano Claude
 -- Code (sessão de 5h e semana), reportado pelo worker local claude-kanban.

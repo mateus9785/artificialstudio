@@ -213,7 +213,9 @@ function CardView({ card, onClose, onDelete }) {
   )
 }
 
-function KanbanCard({ card, onOpen, onArm, onDelete, onDragStart, onDragEnd, isDragging }) {
+const PLAN_PENDING_STATUSES = ['requested', 'planning']
+
+function KanbanCard({ card, onOpen, onArm, onPlan, onDelete, onDragStart, onDragEnd, isDragging }) {
   return (
     <div
       draggable
@@ -257,22 +259,46 @@ function KanbanCard({ card, onOpen, onArm, onDelete, onDragStart, onDragEnd, isD
           {card.error}
         </p>
       )}
+      {card.status === 'todo' && card.planStatus === 'error' && card.planError && (
+        <p className="text-xs mt-1.5 truncate" title={card.planError} style={{ color: '#f87171' }}>
+          Falha ao planejar: {card.planError}
+        </p>
+      )}
       {card.status === 'todo' && card.runImmediately && (
         <p className="text-xs mt-1.5" style={{ color: '#f59e0b' }}>
           Aguardando o worker...
         </p>
       )}
-      {card.status === 'todo' && !card.runImmediately && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation()
-            onArm(card)
-          }}
-          className="mt-2 w-full py-1.5 rounded-lg text-xs font-medium cursor-pointer"
-          style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: '#22d3ee' }}
-        >
-          Executar agora
-        </button>
+      {card.status === 'todo' && PLAN_PENDING_STATUSES.includes(card.planStatus) && (
+        <p className="text-xs mt-1.5" style={{ color: '#a78bfa' }}>
+          Planejando...
+        </p>
+      )}
+      {card.status === 'todo' && !PLAN_PENDING_STATUSES.includes(card.planStatus) && (
+        <div className="flex gap-1.5 mt-2">
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onPlan(card)
+            }}
+            className="flex-1 py-1.5 rounded-lg text-xs font-medium cursor-pointer"
+            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: '#a78bfa' }}
+          >
+            {card.planStatus === 'error' ? 'Planejar de novo' : 'Planejar'}
+          </button>
+          {!card.runImmediately && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onArm(card)
+              }}
+              className="flex-1 py-1.5 rounded-lg text-xs font-medium cursor-pointer"
+              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: '#22d3ee' }}
+            >
+              Executar agora
+            </button>
+          )}
+        </div>
       )}
     </div>
   )
@@ -396,6 +422,15 @@ export default function ProducaoAutomatizada() {
     }
   }
 
+  async function handlePlan(card) {
+    try {
+      const saved = await api.post(`/admin/kanban/cards/${card.id}/request-plan`, {}, getAdminToken())
+      setCards((prev) => prev.map((c) => (c.id === saved.id ? saved : c)))
+    } catch (err) {
+      if (!handleError(err)) window.alert(err.message || 'Não foi possível planejar o card.')
+    }
+  }
+
   async function handleDelete(card) {
     if (!window.confirm(`Excluir o card "${card.title}"?`)) return
     try {
@@ -505,6 +540,7 @@ export default function ProducaoAutomatizada() {
                       card={card}
                       onOpen={setViewing}
                       onArm={handleArm}
+                      onPlan={handlePlan}
                       onDelete={handleDelete}
                       onDragStart={setDragging}
                       onDragEnd={() => setDragging(null)}

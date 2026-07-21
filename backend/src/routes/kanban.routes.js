@@ -38,6 +38,8 @@ function serializeCard(row) {
     description: row.description,
     label: { id: row.label_id, name: row.label_name, color: row.label_color },
     status: row.status,
+    planStatus: row.plan_status,
+    planError: row.plan_error,
     runImmediately: Boolean(row.run_immediately),
     tmuxSession: row.tmux_session,
     error: row.error,
@@ -239,6 +241,19 @@ kanbanRouter.post('/admin/kanban/cards/:id/arm', requireAdmin, asyncHandler(asyn
   res.json(serializeCard(rows[0]))
 }))
 
+kanbanRouter.post('/admin/kanban/cards/:id/request-plan', requireAdmin, asyncHandler(async (req, res) => {
+  const [result] = await pool.query(
+    `UPDATE kanban_cards SET plan_status = 'requested', plan_error = NULL
+     WHERE id = ? AND status = 'todo' AND plan_status IN ('none', 'error')`,
+    [req.params.id],
+  )
+  if (result.affectedRows === 0) {
+    return res.status(409).json({ error: 'Card não encontrado, não está em "Para Fazer" ou já está sendo planejado.' })
+  }
+  const [rows] = await pool.query(`${CARD_SELECT} WHERE c.id = ?`, [req.params.id])
+  res.json(serializeCard(rows[0]))
+}))
+
 kanbanRouter.post('/admin/kanban/cards/:id/retry', requireAdmin, asyncHandler(async (req, res) => {
   const [result] = await pool.query(
     `UPDATE kanban_cards SET
@@ -285,6 +300,7 @@ kanbanRouter.post('/admin/kanban/claim-next', requireAdmin, asyncHandler(async (
 
     const [candidates] = await conn.query(
       `SELECT id FROM kanban_cards WHERE status = 'todo' AND run_immediately = 1
+       AND plan_status IN ('none', 'error')
        ORDER BY created_at ASC LIMIT 1 FOR UPDATE`,
     )
     if (candidates.length === 0) {
@@ -309,6 +325,71 @@ kanbanRouter.post('/admin/kanban/claim-next', requireAdmin, asyncHandler(async (
   } finally {
     conn.release()
   }
+}))
+
+// Reivindicação atômica análoga à de claim-next, mas para o botão "Planejar"
+// (request-plan acima) — pega o card mais antigo com plan_status = 'requested'
+// e marca como 'planning' para o worker rodar `claude -p` nele.
+kanbanRouter.post('/admin/kanban/claim-next-to-plan', requireAdmin, asyncHandler(async (req, res) => {
+  const conn = await pool.getConnection()
+  try {
+    await conn.query('SET TRANSACTION ISOLATION LEVEL READ COMMITTED')
+    await conn.beginTransaction()
+
+    const [candidates] = await conn.query(
+      `SELECT id FROM kanban_cards WHERE status = 'todo' AND plan_status = 'requested'
+       ORDER BY created_at ASC LIMIT 1 FOR UPDATE`,
+    )
+    if (candidates.length === 0) {
+      await conn.rollback()
+      return res.json({ card: null })
+    }
+
+    const id = candidates[0].id
+    await conn.query("UPDATE kanban_cards SET plan_status = 'planning' WHERE id = ? AND status = 'todo'", [id])
+    await conn.commit()
+
+    const [rows] = await pool.query(`${CARD_SELECT} WHERE c.id = ?`, [id])
+    res.json({ card: serializeCard(rows[0]) })
+  } catch (err) {
+    await conn.rollback()
+    throw err
+  } finally {
+    conn.release()
+  }
+}))
+
+kanbanRouter.post('/admin/kanban/cards/:id/plan-result', requireAdmin, asyncHandler(async (req, res) => {
+  const { description, error } = req.body || {}
+
+  if (error) {
+    const [result] = await pool.query(
+      "UPDATE kanban_cards SET plan_status = 'error', plan_error = ? WHERE id = ? AND plan_status = 'planning'",
+      [String(error).slice(0, 4000), req.params.id],
+    )
+    if (result.affectedRows === 0) {
+      return res.status(409).json({ error: 'Card não encontrado ou não está planejando.' })
+    }
+    return res.status(204).end()
+  }
+
+  if (!description || !description.trim()) {
+    return res.status(400).json({ error: 'Descrição do plano vazia.' })
+  }
+
+  // status = 'todo' de novo aqui: se o card já tiver sido armado e reivindicado
+  // por claim-next enquanto o plano rodava (não deveria — claim-next ignora
+  // cards com plan_status pendente — mas por segurança), não sobrescreve a
+  // descrição de um card que já começou a rodar.
+  const [result] = await pool.query(
+    `UPDATE kanban_cards SET description = ?, plan_status = 'none', plan_error = NULL
+     WHERE id = ? AND plan_status = 'planning' AND status = 'todo'`,
+    [description.trim(), req.params.id],
+  )
+  if (result.affectedRows === 0) {
+    return res.status(409).json({ error: 'Card não encontrado, não está planejando ou não está mais em "Para Fazer".' })
+  }
+  res.status(204).end()
 }))
 
 kanbanRouter.patch('/admin/kanban/cards/:id/git-watch', requireAdmin, asyncHandler(async (req, res) => {
