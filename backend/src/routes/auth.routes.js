@@ -17,7 +17,7 @@ const loginLimiter = rateLimit({
 })
 
 authRouter.post('/login', loginLimiter, async (req, res) => {
-  const { username, password } = req.body || {}
+  const { username, password, remember } = req.body || {}
 
   if (!username || !password) {
     return res.status(400).json({ error: 'Informe usuário e senha.' })
@@ -35,7 +35,7 @@ authRouter.post('/login', loginLimiter, async (req, res) => {
     return res.status(401).json({ error: 'Credenciais inválidas.' })
   }
 
-  const token = signAdminToken(admin)
+  const token = signAdminToken(admin, { remember: Boolean(remember) })
   res.json({ token, admin: { id: admin.id, username: admin.username } })
 })
 

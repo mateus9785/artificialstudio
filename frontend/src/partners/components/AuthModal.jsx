@@ -15,6 +15,7 @@ export default function AuthModal({ mode, onClose, onSwitchMode, onForgotPasswor
   const isLogin = mode === 'login'
   const [loginForm, setLoginForm] = useState(EMPTY_LOGIN_FORM)
   const [registerForm, setRegisterForm] = useState(EMPTY_REGISTER_FORM)
+  const [remember, setRemember] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -60,7 +61,7 @@ export default function AuthModal({ mode, onClose, onSwitchMode, onForgotPasswor
     setLoading(true)
     try {
       const data = isLogin
-        ? await api.post('/affiliates/login', loginForm)
+        ? await api.post('/affiliates/login', { ...loginForm, remember })
         : await api.post('/affiliates/register', (({ confirmPassword, ...rest }) => rest)(registerForm))
       setAffiliateSession(data.token, data.affiliate)
       navigate('/indique/dashboard', { replace: true })
@@ -116,6 +117,8 @@ export default function AuthModal({ mode, onClose, onSwitchMode, onForgotPasswor
                 </label>
                 <input
                   type="email"
+                  name="email"
+                  id="affiliate-email"
                   value={loginForm.email}
                   onChange={(e) => setLoginForm((prev) => ({ ...prev, email: e.target.value }))}
                   autoComplete="email"
@@ -139,6 +142,8 @@ export default function AuthModal({ mode, onClose, onSwitchMode, onForgotPasswor
                 </div>
                 <input
                   type="password"
+                  name="password"
+                  id="affiliate-password"
                   value={loginForm.password}
                   onChange={(e) => setLoginForm((prev) => ({ ...prev, password: e.target.value }))}
                   autoComplete="current-password"
@@ -146,6 +151,15 @@ export default function AuthModal({ mode, onClose, onSwitchMode, onForgotPasswor
                   style={inputStyle}
                 />
               </div>
+              <label className="flex items-center gap-2 text-xs cursor-pointer select-none" style={{ color: '#a1a1aa' }}>
+                <input
+                  type="checkbox"
+                  checked={remember}
+                  onChange={(e) => setRemember(e.target.checked)}
+                  className="cursor-pointer"
+                />
+                Manter conectado por 30 dias
+              </label>
             </>
           ) : (
             <>
@@ -154,6 +168,8 @@ export default function AuthModal({ mode, onClose, onSwitchMode, onForgotPasswor
                   Nome completo
                 </label>
                 <input
+                  name="name"
+                  id="affiliate-register-name"
                   value={registerForm.name}
                   onChange={(e) => updateRegister('name', e.target.value)}
                   required
@@ -166,6 +182,8 @@ export default function AuthModal({ mode, onClose, onSwitchMode, onForgotPasswor
                 </label>
                 <input
                   type="email"
+                  name="email"
+                  id="affiliate-register-email"
                   value={registerForm.email}
                   onChange={(e) => updateRegister('email', e.target.value)}
                   autoComplete="email"
@@ -178,6 +196,8 @@ export default function AuthModal({ mode, onClose, onSwitchMode, onForgotPasswor
                   WhatsApp
                 </label>
                 <input
+                  name="whatsapp"
+                  id="affiliate-register-whatsapp"
                   value={registerForm.whatsapp}
                   onChange={(e) => updateRegister('whatsapp', formatWhatsapp(e.target.value))}
                   placeholder="(11) 91234-5678"
@@ -192,6 +212,8 @@ export default function AuthModal({ mode, onClose, onSwitchMode, onForgotPasswor
                   Chave PIX (opcional, para receber comissões)
                 </label>
                 <input
+                  name="pixKey"
+                  id="affiliate-register-pix"
                   value={registerForm.pixKey}
                   onChange={(e) => updateRegister('pixKey', e.target.value)}
                   style={inputStyle}
@@ -203,6 +225,8 @@ export default function AuthModal({ mode, onClose, onSwitchMode, onForgotPasswor
                 </label>
                 <input
                   type="password"
+                  name="new-password"
+                  id="affiliate-register-password"
                   value={registerForm.password}
                   onChange={(e) => updateRegister('password', e.target.value)}
                   autoComplete="new-password"
@@ -220,6 +244,8 @@ export default function AuthModal({ mode, onClose, onSwitchMode, onForgotPasswor
                 </label>
                 <input
                   type="password"
+                  name="confirm-password"
+                  id="affiliate-register-confirm-password"
                   value={registerForm.confirmPassword}
                   onChange={(e) => updateRegister('confirmPassword', e.target.value)}
                   autoComplete="new-password"

@@ -12,9 +12,17 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 export const app = express()
 
+const corsOrigins = process.env.CORS_ORIGIN?.split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean)
+
+if (!corsOrigins || corsOrigins.length === 0) {
+  console.warn('[cors] CORS_ORIGIN não definida — bloqueando todas as origens cross-origin.')
+}
+
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN?.split(',') || '*',
+    origin: corsOrigins && corsOrigins.length > 0 ? corsOrigins : false,
   }),
 )
 app.use(express.json())

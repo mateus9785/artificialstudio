@@ -8,6 +8,7 @@ export default function Login() {
   const navigate = useNavigate()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [remember, setRemember] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -20,7 +21,7 @@ export default function Login() {
     setError('')
     setLoading(true)
     try {
-      const data = await api.post('/auth/login', { username, password })
+      const data = await api.post('/auth/login', { username, password, remember })
       setAdminSession(data.token, data.admin)
       navigate('/admin/posts', { replace: true })
     } catch (err) {
@@ -53,6 +54,8 @@ export default function Login() {
             </label>
             <input
               type="text"
+              name="username"
+              id="admin-username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               autoComplete="username"
@@ -67,6 +70,8 @@ export default function Login() {
             </label>
             <input
               type="password"
+              name="password"
+              id="admin-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="current-password"
@@ -75,6 +80,16 @@ export default function Login() {
               style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#e4e4e7' }}
             />
           </div>
+
+          <label className="flex items-center gap-2 text-xs cursor-pointer select-none" style={{ color: '#a1a1aa' }}>
+            <input
+              type="checkbox"
+              checked={remember}
+              onChange={(e) => setRemember(e.target.checked)}
+              className="cursor-pointer"
+            />
+            Manter conectado por 30 dias
+          </label>
 
           {error && (
             <p className="text-xs" style={{ color: '#f87171' }}>

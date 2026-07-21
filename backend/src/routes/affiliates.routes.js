@@ -89,7 +89,7 @@ affiliatesRouter.post('/affiliates/register', authLimiter, async (req, res) => {
 })
 
 affiliatesRouter.post('/affiliates/login', authLimiter, async (req, res) => {
-  const { email, password } = req.body || {}
+  const { email, password, remember } = req.body || {}
 
   if (!email || !password) {
     return res.status(400).json({ error: 'Informe e-mail e senha.' })
@@ -107,7 +107,7 @@ affiliatesRouter.post('/affiliates/login', authLimiter, async (req, res) => {
     return res.status(401).json({ error: 'Credenciais inválidas.' })
   }
 
-  const token = signAffiliateToken(affiliate)
+  const token = signAffiliateToken(affiliate, { remember: Boolean(remember) })
   res.json({ token, affiliate: serializeAffiliate(affiliate) })
 })
 
