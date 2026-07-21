@@ -62,7 +62,7 @@ function CardForm({ card, labels, onCancel, onSaved, onManageLabels, onDelete })
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.6)' }}>
       <div
-        className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl p-6"
+        className="w-[95vw] max-w-[1400px] max-h-[90vh] overflow-y-auto rounded-2xl p-6"
         style={{ background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.08)' }}
       >
         <div className="flex items-center justify-between mb-5">
@@ -75,49 +75,53 @@ function CardForm({ card, labels, onCancel, onSaved, onManageLabels, onDelete })
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <div>
-            <label className="text-xs font-medium block mb-1.5" style={{ color: '#a1a1aa' }}>
-              Título
+          <div className="flex flex-col sm:flex-row gap-4 sm:items-end">
+            <div className="flex-1">
+              <label className="text-xs font-medium block mb-1.5" style={{ color: '#a1a1aa' }}>
+                Título
+              </label>
+              <input value={title} onChange={(e) => setTitle(e.target.value)} style={inputStyle} />
+            </div>
+
+            <div className="sm:w-40 flex-shrink-0">
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-medium" style={{ color: '#a1a1aa' }}>
+                  Etiqueta
+                </label>
+                <button
+                  type="button"
+                  onClick={onManageLabels}
+                  title="Gerenciar etiquetas"
+                  aria-label="Gerenciar etiquetas"
+                  className="cursor-pointer"
+                  style={{ color: '#22d3ee' }}
+                >
+                  <Tag size={12} />
+                </button>
+              </div>
+              <select value={labelId} onChange={(e) => setLabelId(e.target.value)} style={selectStyle}>
+                {labels.length === 0 && <option value="" style={optionStyle}>Nenhuma etiqueta cadastrada</option>}
+                {labels.length > 0 && <option value="" style={optionStyle}>Selecione uma etiqueta</option>}
+                {labels.map((label) => (
+                  <option key={label.id} value={label.id} style={optionStyle}>
+                    {label.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <label className="flex items-center gap-2 text-sm cursor-pointer flex-shrink-0 sm:pb-2.5" style={{ color: '#d4d4d8' }}>
+              <input type="checkbox" checked={runImmediately} onChange={(e) => setRunImmediately(e.target.checked)} />
+              Executar imediatamente
             </label>
-            <input value={title} onChange={(e) => setTitle(e.target.value)} style={inputStyle} />
           </div>
 
           <div>
             <label className="text-xs font-medium block mb-1.5" style={{ color: '#a1a1aa' }}>
               Descrição (tarefa enviada para o Claude)
             </label>
-            <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={6} style={inputStyle} />
+            <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={16} style={inputStyle} />
           </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-medium" style={{ color: '#a1a1aa' }}>
-                Etiqueta (pasta)
-              </label>
-              <button
-                type="button"
-                onClick={onManageLabels}
-                className="text-xs cursor-pointer flex items-center gap-1"
-                style={{ color: '#22d3ee' }}
-              >
-                <Tag size={12} /> Gerenciar etiquetas
-              </button>
-            </div>
-            <select value={labelId} onChange={(e) => setLabelId(e.target.value)} style={selectStyle}>
-              {labels.length === 0 && <option value="" style={optionStyle}>Nenhuma etiqueta cadastrada</option>}
-              {labels.length > 0 && <option value="" style={optionStyle}>Selecione uma etiqueta</option>}
-              {labels.map((label) => (
-                <option key={label.id} value={label.id} style={optionStyle}>
-                  {label.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <label className="flex items-center gap-2 text-sm cursor-pointer" style={{ color: '#d4d4d8' }}>
-            <input type="checkbox" checked={runImmediately} onChange={(e) => setRunImmediately(e.target.checked)} />
-            Executar imediatamente
-          </label>
 
           {error && (
             <p className="text-xs" style={{ color: '#f87171' }}>
@@ -163,14 +167,23 @@ function CardView({ card, onClose, onDelete }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.6)' }}>
       <div
-        className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl p-6"
+        className="w-[95vw] max-w-[1400px] max-h-[90vh] overflow-y-auto rounded-2xl p-6"
         style={{ background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.08)' }}
       >
-        <div className="flex items-center justify-between mb-5">
-          <h3 className="text-base font-semibold" style={{ color: '#f4f4f5' }}>
-            {card.title}
-          </h3>
-          <button onClick={onClose} className="cursor-pointer" style={{ color: '#71717a' }}>
+        <div className="flex items-start justify-between gap-4 mb-5">
+          <div className="flex items-center gap-3 flex-wrap min-w-0">
+            <h3 className="text-base font-semibold truncate" style={{ color: '#f4f4f5' }}>
+              {card.title}
+            </h3>
+            <span className="inline-flex items-center gap-1.5 text-xs flex-shrink-0" style={{ color: '#d4d4d8' }}>
+              <span className="inline-block w-2 h-2 rounded-full flex-shrink-0" style={{ background: card.label.color }} />
+              {card.label.name}
+            </span>
+            <span className="text-xs flex-shrink-0" style={{ color: STATUS_META[card.status].color }}>
+              {STATUS_META[card.status].label}
+            </span>
+          </div>
+          <button onClick={onClose} className="cursor-pointer flex-shrink-0" style={{ color: '#71717a' }}>
             <X size={18} />
           </button>
         </div>
@@ -178,17 +191,6 @@ function CardView({ card, onClose, onDelete }) {
         <div className="mb-4 p-4 rounded-xl text-sm whitespace-pre-wrap" style={{ background: 'rgba(255,255,255,0.03)', color: '#a1a1aa' }}>
           {card.description}
         </div>
-
-        <p className="text-xs mb-1 flex items-center gap-1.5" style={{ color: '#71717a' }}>
-          Etiqueta:
-          <span className="inline-flex items-center gap-1.5" style={{ color: '#d4d4d8' }}>
-            <span className="inline-block w-2 h-2 rounded-full flex-shrink-0" style={{ background: card.label.color }} />
-            {card.label.name}
-          </span>
-        </p>
-        <p className="text-xs mb-1" style={{ color: '#71717a' }}>
-          Status: <span style={{ color: STATUS_META[card.status].color }}>{STATUS_META[card.status].label}</span>
-        </p>
 
         {card.status === 'error' && card.error && (
           <p className="text-xs mt-3 p-3 rounded-xl whitespace-pre-wrap" style={{ background: 'rgba(248,113,113,0.08)', color: '#f87171' }}>
