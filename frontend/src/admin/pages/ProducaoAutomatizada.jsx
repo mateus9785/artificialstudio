@@ -41,8 +41,12 @@ function CardForm({ card, labels, onCancel, onSaved, onManageLabels, onDelete })
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
-    if (!title.trim() || !description.trim() || !labelId) {
-      setError('Preencha título, descrição e etiqueta.')
+    if (!title.trim() || !labelId) {
+      setError('Preencha título e etiqueta.')
+      return
+    }
+    if (runImmediately && !description.trim()) {
+      setError('Descrição é obrigatória para executar imediatamente.')
       return
     }
     setSaving(true)
@@ -247,15 +251,17 @@ function KanbanCard({ card, onOpen, onArm, onPlan, onDelete, onDragStart, onDrag
       <p className="text-sm font-medium truncate pr-5" style={{ color: '#e4e4e7' }}>
         {card.title}
       </p>
-      <span
-        className="inline-block text-xs mt-1.5 px-1.5 py-0.5 rounded-md"
-        style={{ background: `${card.label.color}22`, color: card.label.color }}
-      >
-        {card.label.name}
-      </span>
-      <p className="text-xs mt-1.5" style={{ color: '#52525b' }}>
-        {new Date(card.createdAt).toLocaleDateString('pt-BR')}
-      </p>
+      <div className="flex items-center justify-between gap-2 mt-1.5">
+        <span
+          className="inline-block text-xs px-1.5 py-0.5 rounded-md truncate"
+          style={{ background: `${card.label.color}22`, color: card.label.color }}
+        >
+          {card.label.name}
+        </span>
+        <span className="text-xs flex-shrink-0" style={{ color: '#52525b' }}>
+          {new Date(card.createdAt).toLocaleDateString('pt-BR')}
+        </span>
+      </div>
       {card.status === 'error' && card.error && (
         <p className="text-xs mt-1.5 truncate" style={{ color: '#f87171' }}>
           {card.error}
@@ -288,7 +294,7 @@ function KanbanCard({ card, onOpen, onArm, onPlan, onDelete, onDragStart, onDrag
           >
             {card.planStatus === 'error' ? 'Planejar de novo' : 'Planejar'}
           </button>
-          {!card.runImmediately && (
+          {!card.runImmediately && card.description?.trim() && (
             <button
               onClick={(e) => {
                 e.stopPropagation()

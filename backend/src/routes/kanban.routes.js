@@ -146,8 +146,11 @@ kanbanRouter.get('/admin/kanban/cards', requireAdmin, asyncHandler(async (req, r
 kanbanRouter.post('/admin/kanban/cards', requireAdmin, asyncHandler(async (req, res) => {
   const { title, description, labelId, runImmediately } = req.body || {}
 
-  if (!title || !description || !labelId) {
-    return res.status(400).json({ error: 'Preencha título, descrição e etiqueta.' })
+  if (!title || !labelId) {
+    return res.status(400).json({ error: 'Preencha título e etiqueta.' })
+  }
+  if (runImmediately && !description) {
+    return res.status(400).json({ error: 'Descrição é obrigatória para executar imediatamente.' })
   }
 
   const [labelRows] = await pool.query('SELECT id FROM kanban_labels WHERE id = ?', [labelId])
@@ -157,7 +160,7 @@ kanbanRouter.post('/admin/kanban/cards', requireAdmin, asyncHandler(async (req, 
 
   const [result] = await pool.query(
     'INSERT INTO kanban_cards (title, description, label_id, run_immediately) VALUES (?, ?, ?, ?)',
-    [title, description, labelId, Boolean(runImmediately)],
+    [title, description || '', labelId, Boolean(runImmediately)],
   )
 
   const [rows] = await pool.query(`${CARD_SELECT} WHERE c.id = ?`, [result.insertId])
@@ -207,14 +210,20 @@ kanbanRouter.patch('/admin/kanban/cards/:id', requireAdmin, asyncHandler(async (
     }
   }
 
+  const effectiveDescription = description === undefined ? card.description : description
+  const effectiveRunImmediately = runImmediately === undefined ? Boolean(card.run_immediately) : Boolean(runImmediately)
+  if (effectiveRunImmediately && !effectiveDescription) {
+    return res.status(400).json({ error: 'Descrição é obrigatória para executar imediatamente.' })
+  }
+
   await pool.query(
     `UPDATE kanban_cards SET
        title = COALESCE(?, title),
-       description = COALESCE(?, description),
+       description = ?,
        label_id = COALESCE(?, label_id),
-       run_immediately = COALESCE(?, run_immediately)
+       run_immediately = ?
      WHERE id = ?`,
-    [title || null, description || null, labelId || null, runImmediately === undefined ? null : Boolean(runImmediately), card.id],
+    [title || null, effectiveDescription, labelId || null, effectiveRunImmediately, card.id],
   )
 
   const [rows] = await pool.query(`${CARD_SELECT} WHERE c.id = ?`, [card.id])
@@ -231,11 +240,11 @@ kanbanRouter.delete('/admin/kanban/cards/:id', requireAdmin, asyncHandler(async 
 
 kanbanRouter.post('/admin/kanban/cards/:id/arm', requireAdmin, asyncHandler(async (req, res) => {
   const [result] = await pool.query(
-    "UPDATE kanban_cards SET run_immediately = 1 WHERE id = ? AND status = 'todo'",
+    "UPDATE kanban_cards SET run_immediately = 1 WHERE id = ? AND status = 'todo' AND description <> ''",
     [req.params.id],
   )
   if (result.affectedRows === 0) {
-    return res.status(409).json({ error: 'Card não encontrado ou não está em "Para Fazer".' })
+    return res.status(409).json({ error: 'Card não encontrado, não está em "Para Fazer" ou não tem descrição.' })
   }
   const [rows] = await pool.query(`${CARD_SELECT} WHERE c.id = ?`, [req.params.id])
   res.json(serializeCard(rows[0]))
