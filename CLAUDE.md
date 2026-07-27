@@ -1,6 +1,6 @@
 # Artificial Studio
 
-Monorepo com `backend/` (Express + MySQL) e `frontend/` (React + Vite + Tailwind), incluindo a landing pública, o painel `/admin` e a área de parceiros `/indique`.
+Monorepo com `backend/` (Express + MySQL) e `frontend/` (React + Vite + Tailwind), incluindo a landing pública e o painel `/admin`.
 
 ## Prioridade: SEO
 
@@ -15,7 +15,7 @@ SEO é prioridade máxima no site público (`frontend/src/App.jsx` e componentes
 - Meta: carregar em **menos de 2 segundos**.
 - Imagens: sempre compactar antes de subir para `frontend/public/`. Preferir `.webp` quando possível; nunca subir PNG/JPEG de câmera/design sem otimizar primeiro (já aconteceu de um logo de 32px em tela ir para produção com 650KB — checar sempre o tamanho do arquivo final).
 - Evitar scripts de terceiros bloqueando a renderização inicial — scripts de analytics/tracking devem carregar de forma assíncrona e só após consentimento (ver `frontend/src/lib/analytics.js`).
-- Rotas que não são a landing pública (`/admin`, `/indique`) devem ficar em chunks separados via `React.lazy` (ver `frontend/src/main.jsx`) para não inflar o bundle inicial da página que importa para SEO.
+- Rotas que não são a landing pública (`/admin`) devem ficar em chunks separados via `React.lazy` (ver `frontend/src/main.jsx`) para não inflar o bundle inicial da página que importa para SEO.
 
 ### 3. Mobile-First (Responsividade)
 - Mais de 60% das buscas vêm do celular — o Google penaliza sites que não funcionam bem em telas pequenas.

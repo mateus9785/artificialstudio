@@ -9,7 +9,6 @@ import ServicesPage from './ServicesPage.jsx'
 import AboutPage from './AboutPage.jsx'
 
 const AdminApp = lazy(() => import('./admin/AdminApp.jsx'))
-const PartnersApp = lazy(() => import('./partners/PartnersApp.jsx'))
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
@@ -17,7 +16,6 @@ createRoot(document.getElementById('root')).render(
       <Suspense fallback={null}>
         <Routes>
           <Route path="/admin/*" element={<AdminApp />} />
-          <Route path="/indique/*" element={<PartnersApp />} />
           <Route path="/blog" element={<BlogListPage />} />
           <Route path="/blog/:slug" element={<BlogPostPage />} />
           <Route path="/servicos" element={<ServicesPage />} />

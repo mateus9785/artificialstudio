@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { Bot, MessageCircleMore, LayoutDashboard, Rocket, ArrowRight, Check } from 'lucide-react'
-import { WHATSAPP_NUMBER } from './WhatsAppButton'
+import { WHATSAPP_NUMBER } from '../lib/whatsapp'
 
 const SITE_URL = 'https://artificialstudio.com.br'
 const PAGE_TITLE = 'Nossos Serviços | Artificial Studio'

@@ -49,55 +49,13 @@ CREATE TABLE IF NOT EXISTS chat_messages (
   INDEX idx_messages_conversation (conversation_id)
 );
 
-CREATE TABLE IF NOT EXISTS affiliates (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  name VARCHAR(150) NOT NULL,
-  email VARCHAR(150) NOT NULL UNIQUE,
-  whatsapp VARCHAR(30) NOT NULL,
-  pix_key VARCHAR(150),
-  password_hash VARCHAR(255) NOT NULL,
-  reset_token VARCHAR(64),
-  reset_token_expires TIMESTAMP NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_affiliates_reset_token (reset_token)
-);
-
-ALTER TABLE affiliates ADD COLUMN reset_token VARCHAR(64);
-ALTER TABLE affiliates ADD COLUMN reset_token_expires TIMESTAMP NULL;
-
-CREATE TABLE IF NOT EXISTS referrals (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  affiliate_id INT NOT NULL,
-  contact_name VARCHAR(150) NOT NULL,
-  company_name VARCHAR(150),
-  contact_info VARCHAR(150) NOT NULL,
-  service_type VARCHAR(100) NOT NULL,
-  already_notified BOOLEAN NOT NULL DEFAULT FALSE,
-  status ENUM('novo', 'contatado', 'negociando', 'fechado', 'finalizado', 'sem_interesse', 'cancelado') NOT NULL DEFAULT 'novo',
-  commission_type ENUM('unico', 'mensalidade') NOT NULL DEFAULT 'unico',
-  closed_value DECIMAL(10, 2),
-  commission_value DECIMAL(10, 2),
-  admin_notes TEXT,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  FOREIGN KEY (affiliate_id) REFERENCES affiliates(id) ON DELETE CASCADE,
-  INDEX idx_referrals_affiliate (affiliate_id),
-  INDEX idx_referrals_status (status)
-);
-
-ALTER TABLE referrals MODIFY COLUMN status ENUM('novo', 'contatado', 'negociando', 'fechado', 'finalizado', 'sem_interesse', 'cancelado') NOT NULL DEFAULT 'novo';
-
-CREATE TABLE IF NOT EXISTS affiliate_notifications (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  affiliate_id INT NOT NULL,
-  referral_id INT,
-  message VARCHAR(255) NOT NULL,
-  is_read BOOLEAN NOT NULL DEFAULT FALSE,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (affiliate_id) REFERENCES affiliates(id) ON DELETE CASCADE,
-  FOREIGN KEY (referral_id) REFERENCES referrals(id) ON DELETE SET NULL,
-  INDEX idx_notifications_affiliate (affiliate_id)
-);
+-- Programa de afiliados (a area /indique, o cadastro, o login e o painel do
+-- parceiro) foi removido do produto. As tabelas sao dropadas na ordem filho para
+-- pai por causa das FOREIGN KEYs: affiliate_notifications aponta para as duas
+-- outras, e referrals aponta para affiliates.
+DROP TABLE IF EXISTS affiliate_notifications;
+DROP TABLE IF EXISTS referrals;
+DROP TABLE IF EXISTS affiliates;
 
 CREATE TABLE IF NOT EXISTS kanban_labels (
   id INT AUTO_INCREMENT PRIMARY KEY,

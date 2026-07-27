@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { ArrowRight } from 'lucide-react'
-import { WHATSAPP_NUMBER } from './WhatsAppButton'
+import { WHATSAPP_NUMBER } from '../lib/whatsapp'
 
 const gradientTextStyle = {
   background: 'linear-gradient(135deg, #22d3ee 0%, #a855f7 100%)',

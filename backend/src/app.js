@@ -5,7 +5,6 @@ import cors from 'cors'
 import { authRouter } from './routes/auth.routes.js'
 import { postsRouter } from './routes/posts.routes.js'
 import { chatRouter } from './routes/chat.routes.js'
-import { affiliatesRouter } from './routes/affiliates.routes.js'
 import { kanbanRouter } from './routes/kanban.routes.js'
 import { financeiroRouter } from './routes/financeiro.routes.js'
 
@@ -34,7 +33,6 @@ app.get('/api/health', (req, res) => res.json({ ok: true }))
 app.use('/api/auth', authRouter)
 app.use('/api', postsRouter)
 app.use('/api', chatRouter)
-app.use('/api', affiliatesRouter)
 app.use('/api', kanbanRouter)
 app.use('/api', financeiroRouter)
 
