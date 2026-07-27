@@ -26,3 +26,7 @@ lightsail/
 *.njsproj
 *.sln
 *.sw?
+
+# Saída gerada pelo harness de personas (backend/scripts/test-personas.js)
+backend/tests/personas/
+backend/tests/relatorio-*.md

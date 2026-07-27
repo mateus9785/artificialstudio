@@ -8,7 +8,8 @@
     "start": "node src/index.js",
     "migrate": "node src/db/migrate.js",
     "seed": "node src/db/seed.js",
-    "seed:posts": "node src/db/seedBlogPosts.js"
+    "seed:posts": "node src/db/seedBlogPosts.js",
+    "test:personas": "node --env-file-if-exists=.env scripts/test-personas.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

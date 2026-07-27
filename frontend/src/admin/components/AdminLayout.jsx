@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom'
-import { FileText, LogOut, Handshake, Users, ChevronsLeft, ChevronsRight, KeyRound, KanbanSquare, Wallet, Menu, X } from 'lucide-react'
+import { FileText, LogOut, Handshake, Users, ChevronsLeft, ChevronsRight, KeyRound, KanbanSquare, Wallet, Menu, X, Bot } from 'lucide-react'
 import { clearAdminSession } from '../../lib/adminAuth'
 import ChangePasswordModal from './ChangePasswordModal'
 
 const NAV_ITEMS = [
   { to: '/admin/posts', label: 'Blog', icon: FileText },
+  { to: '/admin/conversas-ia', label: 'Conversas IA', icon: Bot },
   { to: '/admin/referrals', label: 'Indicações', icon: Handshake },
   { to: '/admin/affiliates', label: 'Afiliados', icon: Users },
   { to: '/admin/producao-automatizada', label: 'Produção Automatizada', icon: KanbanSquare },

@@ -36,7 +36,31 @@ Landing page + backend (Node/Express/MySQL) com painel administrativo em `/admin
 - **Blog**: criar, editar e excluir os posts exibidos na landing page.
 - **Analytics**: pageviews, sessões e consentimento LGPD coletados pelo próprio backend (dado próprio,
   independente dos dashboards do GA4/Clarity/Meta, que continuam disponíveis nas respectivas plataformas).
-- **Conversas**: histórico do chat do site — as respostas são enviadas manualmente por aqui (sem IA).
+- **Conversas IA**: o chat do site é atendido por uma IA comercial que levanta os requisitos do
+  projeto e fecha um orçamento. Quando o cliente confirma, um card é criado automaticamente em
+  **Produção Automatizada** (em "Para Fazer", sem executar nada sozinho). Nesta tela você lê a
+  conversa, vê o orçamento extraído, abre o card gerado e pode pausar a IA para responder você mesmo.
+
+## Atendimento com IA (chat do site)
+
+As regras, o funil e a tabela de preços do robô ficam em `backend/ai-atendimento/`
+(`CLAUDE.md`, `ROTEIRO.md`, `PRECOS.md`) — é conteúdo versionado, editável sem mexer em código.
+Editar qualquer um dos três descarta as sessões em andamento para que a mudança valha na hora.
+
+O backend chama o CLI `claude` como subprocesso (mesmo mecanismo do `chatbot_7m`, sem API paga), então
+**o `claude` precisa estar instalado e autenticado no mesmo usuário que roda o backend** — inclusive
+no servidor. Sem ele, o visitante recebe uma mensagem de fallback com o WhatsApp em vez de silêncio.
+Para desligar o atendimento automático: `AI_CHAT_ENABLED=false`.
+
+Teste do atendimento ponta a ponta com 10 personas:
+
+```
+cd backend
+npm run test:personas          # todas
+npm run test:personas -- 3 7   # só as personas 3 e 7
+```
+
+Os transcritos saem em `backend/tests/personas/` e o resumo em `backend/tests/relatorio-<data>.md`.
 
 ## Rastreamento (Backstage)
 

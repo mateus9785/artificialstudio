@@ -8,6 +8,9 @@ function WhatsAppIcon() {
   )
 }
 
+// `bottom-24` e não `bottom-6`: o balão do chat com IA (ChatWidget) ocupa o canto inferior direito,
+// então este botão fica empilhado logo acima dele. Quando o painel do chat abre, ele sobe de camada
+// (z-60) e cobre este botão — os dois disputando o mesmo canto seria pior que esconder um.
 export default function WhatsAppButton() {
   return (
     <a
@@ -15,7 +18,7 @@ export default function WhatsAppButton() {
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Falar no WhatsApp"
-      className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full flex items-center justify-center cursor-pointer transition-transform duration-300 hover:scale-105"
+      className="fixed bottom-24 right-6 z-50 w-14 h-14 rounded-full flex items-center justify-center cursor-pointer transition-transform duration-300 hover:scale-105"
       style={{
         background: '#25D366',
         boxShadow: '0 8px 30px rgba(37,211,102,0.35)',

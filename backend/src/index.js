@@ -1,8 +1,10 @@
 import 'dotenv/config'
 import { app } from './app.js'
+import { startAiChatWorker } from './services/aiChatWorker.js'
 
 const port = Number(process.env.PORT) || 4000
 
 app.listen(port, () => {
   console.log(`API rodando em http://localhost:${port}`)
+  startAiChatWorker()
 })

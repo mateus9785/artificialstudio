@@ -3,7 +3,7 @@ import ProtectedRoute from './components/ProtectedRoute'
 import AdminLayout from './components/AdminLayout'
 import Login from './pages/Login'
 import Posts from './pages/Posts'
-import Chat from './pages/Chat'
+import ConversasIA from './pages/ConversasIA'
 import Referrals from './pages/Referrals'
 import Affiliates from './pages/Affiliates'
 import ProducaoAutomatizada from './pages/ProducaoAutomatizada'
@@ -19,7 +19,9 @@ export default function AdminApp() {
           <Route path="posts" element={<Posts />} />
           <Route path="referrals" element={<Referrals />} />
           <Route path="affiliates" element={<Affiliates />} />
-          <Route path="chat" element={<Chat />} />
+          <Route path="conversas-ia" element={<ConversasIA />} />
+          {/* A tela de conversas virou o painel da IA — o link antigo continua funcionando. */}
+          <Route path="chat" element={<Navigate to="/admin/conversas-ia" replace />} />
           <Route path="producao-automatizada" element={<ProducaoAutomatizada />} />
           <Route path="financeiro" element={<Financeiro />} />
         </Route>
