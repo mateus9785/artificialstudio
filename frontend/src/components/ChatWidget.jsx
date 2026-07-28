@@ -190,6 +190,7 @@ export default function ChatWidget() {
   const [aiPending, setAiPending] = useState(false)
   const messagesEndRef = useRef(null)
   const lastIdRef = useRef(0)
+  const seenIdsRef = useRef(new Set())
 
   useEffect(() => {
     if (isOpen && !isMinimized) {
@@ -197,10 +198,15 @@ export default function ChatWidget() {
     }
   }, [messages, aiPending, isOpen, isMinimized])
 
+  // O servidor grava a mensagem do visitante no banco antes de esperar a resposta da IA (até 2min),
+  // então o poll pode ver essa mesma mensagem antes da própria chamada de envio ter retornado.
+  // Deduplicar por id garante que ela só seja renderizada uma vez, não importa qual chegue primeiro.
   const mergeMessages = useCallback((incoming) => {
-    if (!incoming.length) return
-    setMessages((prev) => [...prev, ...incoming])
-    lastIdRef.current = incoming[incoming.length - 1].id
+    const fresh = incoming.filter((msg) => !seenIdsRef.current.has(msg.id))
+    if (!fresh.length) return
+    fresh.forEach((msg) => seenIdsRef.current.add(msg.id))
+    setMessages((prev) => [...prev, ...fresh])
+    lastIdRef.current = fresh[fresh.length - 1].id
   }, [])
 
   // Inicia a conversa e carrega o histórico ao abrir o chat pela primeira vez
@@ -209,6 +215,7 @@ export default function ChatWidget() {
     api
       .post(`/chat/start`, { sessionId: getSessionId() })
       .then((data) => {
+        seenIdsRef.current = new Set(data.messages.map((msg) => msg.id))
         setMessages(data.messages)
         lastIdRef.current = data.messages.at(-1)?.id || 0
         setAiPending(Boolean(data.aiPending))
@@ -249,12 +256,11 @@ export default function ChatWidget() {
     api
       .post(`/chat/${getSessionId()}/messages`, { text })
       .then((msg) => {
-        setMessages((prev) => [...prev, msg])
-        lastIdRef.current = msg.id
+        mergeMessages([msg])
         setAiPending(Boolean(msg.aiPending))
       })
       .catch(() => setAiPending(false))
-  }, [inputValue])
+  }, [inputValue, mergeMessages])
 
   const openChat = () => {
     setIsOpen(true)
