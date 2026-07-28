@@ -268,29 +268,6 @@ export default function Hero() {
             Quero meu projeto agora
             <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
           </a>
-
-          <a
-            href="#portfolio"
-            className="flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl font-medium text-base transition-all duration-300 cursor-pointer"
-            style={{
-              background: 'rgba(255,255,255,0.03)',
-              color: '#a1a1aa',
-              border: '1px solid rgba(255,255,255,0.09)',
-              backdropFilter: 'blur(10px)',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = 'rgba(34,211,238,0.3)'
-              e.currentTarget.style.color = '#22d3ee'
-              e.currentTarget.style.background = 'rgba(34,211,238,0.05)'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = 'rgba(255,255,255,0.09)'
-              e.currentTarget.style.color = '#a1a1aa'
-              e.currentTarget.style.background = 'rgba(255,255,255,0.03)'
-            }}
-          >
-            Ver portfólio
-          </a>
         </div>
 
         {/* Social proof */}

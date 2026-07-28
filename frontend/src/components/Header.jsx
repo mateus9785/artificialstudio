@@ -2,8 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 import { Menu, X } from 'lucide-react'
 
-const NAV_ITEMS = ['Home', 'Portfólio', 'Blog']
-const NAV_SECTION_IDS = ['home', 'portfolio', 'blog']
+const NAV_ITEMS = ['Home', 'Blog']
+const NAV_SECTION_IDS = ['home', 'blog']
 
 export default function Header() {
   const { pathname } = useLocation()

@@ -1,7 +1,6 @@
 const FOOTER_LINKS = {
   Empresa: [
     { label: 'Sobre nós', href: '/sobre' },
-    { label: 'Casos de uso', href: '/#portfolio' },
     { label: 'Blog', href: '/#blog' },
   ],
   Serviços: [
