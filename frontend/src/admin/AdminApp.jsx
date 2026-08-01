@@ -6,6 +6,7 @@ import Posts from './pages/Posts'
 import ConversasIA from './pages/ConversasIA'
 import ProducaoAutomatizada from './pages/ProducaoAutomatizada'
 import Financeiro from './pages/Financeiro'
+import WhatsApp from './pages/WhatsApp'
 
 export default function AdminApp() {
   return (
@@ -16,6 +17,7 @@ export default function AdminApp() {
           <Route index element={<Navigate to="posts" replace />} />
           <Route path="posts" element={<Posts />} />
           <Route path="conversas-ia" element={<ConversasIA />} />
+          <Route path="whatsapp" element={<WhatsApp />} />
           {/* A tela de conversas virou o painel da IA — o link antigo continua funcionando. */}
           <Route path="chat" element={<Navigate to="/admin/conversas-ia" replace />} />
           <Route path="producao-automatizada" element={<ProducaoAutomatizada />} />

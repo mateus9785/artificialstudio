@@ -423,3 +423,68 @@ CREATE TABLE IF NOT EXISTS chat_quotes (
 -- descreve as tres formas (etapas, cartao, PIX) com os valores de cada uma, e isso passa
 -- folgado dos 255 caracteres do desenho original.
 ALTER TABLE chat_quotes MODIFY COLUMN payment_terms VARCHAR(1000) NULL;
+
+-- ==========================================================================
+-- WhatsApp (canal via Baileys) - portado do ominichain, so a parte que fala
+-- direto com o protocolo do WhatsApp Web (sem navegador) - sem os canais que
+-- dependiam de Playwright/Chromium la (Shopee, Gmail, MercadoLivre, Procon,
+-- ReclameAqui, GoogleMeuNegocio), que nao entraram nesta migracao.
+--
+-- Uma unica conta conectada (nao multi-tenant) - status/QR ficam em
+-- whatsapp_connection, tabela de linha unica no mesmo padrao de claude_usage
+-- acima. Mesma restricao de estilo do resto do arquivo: migrate.js corta por
+-- ponto e virgula, entao nenhum comentario pode conter um, e toda FOREIGN KEY
+-- precisa ser inline no CREATE TABLE.
+-- ==========================================================================
+
+CREATE TABLE IF NOT EXISTS whatsapp_connection (
+  id TINYINT PRIMARY KEY DEFAULT 1,
+  status ENUM('pending_auth', 'connected', 'disconnected') NOT NULL DEFAULT 'disconnected',
+  qr_data TEXT NULL,
+  phone_number VARCHAR(20) NULL,
+  last_connected_at TIMESTAMP NULL,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS whatsapp_contacts (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  external_jid VARCHAR(80) NOT NULL UNIQUE,
+  display_name VARCHAR(150) NULL,
+  avatar_url VARCHAR(500) NULL,
+  phone_number VARCHAR(20) NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS whatsapp_conversations (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  contact_id INT NOT NULL,
+  last_message_at TIMESTAMP NULL,
+  last_message_preview VARCHAR(160) NULL,
+  unread_count INT NOT NULL DEFAULT 0,
+  status VARCHAR(20) NOT NULL DEFAULT 'open',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (contact_id) REFERENCES whatsapp_contacts(id) ON DELETE CASCADE,
+  UNIQUE KEY whatsapp_conversations_contact_unique (contact_id),
+  INDEX idx_whatsapp_conversations_last_message (last_message_at)
+);
+
+CREATE TABLE IF NOT EXISTS whatsapp_messages (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  conversation_id INT NOT NULL,
+  direction ENUM('inbound', 'outbound') NOT NULL,
+  status ENUM('queued', 'sent', 'delivered', 'failed') NOT NULL DEFAULT 'sent',
+  external_message_id VARCHAR(120) NULL,
+  text TEXT NULL,
+  attachment_type VARCHAR(20) NULL,
+  attachment_url VARCHAR(500) NULL,
+  attachment_mime VARCHAR(100) NULL,
+  error_message TEXT NULL,
+  sent_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMP NULL,
+  FOREIGN KEY (conversation_id) REFERENCES whatsapp_conversations(id) ON DELETE CASCADE,
+  UNIQUE KEY whatsapp_messages_external_unique (conversation_id, external_message_id),
+  INDEX idx_whatsapp_messages_conversation (conversation_id, sent_at)
+);

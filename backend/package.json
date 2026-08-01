@@ -12,6 +12,7 @@
     "test:personas": "node --env-file-if-exists=.env scripts/test-personas.js"
   },
   "dependencies": {
+    "baileys": "^6.7.16",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
@@ -21,6 +22,7 @@
     "multer": "^2.2.0",
     "mysql2": "^3.11.3",
     "nodemailer": "^6.9.15",
+    "pino": "^9.4.0",
     "sharp": "^0.35.3"
   }
 }
