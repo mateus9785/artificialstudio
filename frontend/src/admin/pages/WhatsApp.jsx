@@ -4,6 +4,7 @@ import { Send, User, CheckCheck, Clock, AlertTriangle, MessageCircle, Paperclip 
 import { api, API_URL } from '../../lib/api'
 import { getAdminToken } from '../../lib/adminAuth'
 import { useAdminGuard } from '../useAdminGuard'
+import ScoutPanel from '../components/ScoutPanel'
 
 const STATUS_POLL_MS = 3000
 const CONVERSATIONS_POLL_MS = 5000
@@ -115,6 +116,12 @@ export default function WhatsApp() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [detail?.messages?.length])
 
+  function handleStartConversation(conversationId, draftText) {
+    setSelectedId(conversationId)
+    setReply(draftText || '')
+    loadConversations()
+  }
+
   async function handleConnect() {
     try {
       await api.post('/admin/whatsapp/connect', {}, getAdminToken())
@@ -150,10 +157,11 @@ export default function WhatsApp() {
         Conversas do número conectado via WhatsApp Web.
       </p>
 
-      <div
-        className="flex flex-col xl:grid xl:grid-cols-[280px_1fr] gap-4 xl:h-[72vh] rounded-xl overflow-hidden"
-        style={!isConnected ? { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' } : undefined}
-      >
+      <div className="flex flex-col xl:grid xl:grid-cols-[260px_1fr_320px] gap-4 xl:h-[72vh]">
+        <div
+          className="flex flex-col xl:grid xl:grid-cols-[260px_1fr] xl:col-span-2 gap-4 xl:h-full rounded-xl overflow-hidden"
+          style={!isConnected ? { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' } : undefined}
+        >
         {!isConnected ? (
           <ConnectScreen connectionStatus={connection?.status} qr={connection?.qr} onConnect={handleConnect} />
         ) : (
@@ -299,6 +307,9 @@ export default function WhatsApp() {
             </div>
           </>
         )}
+        </div>
+
+        <ScoutPanel isConnected={isConnected} onStartConversation={handleStartConversation} />
       </div>
     </div>
   )

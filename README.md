@@ -40,6 +40,12 @@ Landing page + backend (Node/Express/MySQL) com painel administrativo em `/admin
   projeto e fecha um orçamento. Quando o cliente confirma, um card é criado automaticamente em
   **Produção Automatizada** (em "Para Fazer", sem executar nada sozinho). Nesta tela você lê a
   conversa, vê o orçamento extraído, abre o card gerado e pode pausar a IA para responder você mesmo.
+- **WhatsApp**: conversas do número conectado via WhatsApp Web (Baileys). A lateral direita lista os
+  leads encontrados pelo [pegasus-scout](../pegasus-scout) (robô de prospecção que roda **local**, num
+  worker controlado por esta tela — mesmo padrão do `claude-kanban`), com um formulário pra escolher
+  nicho/cidade/UF e mandar rodar, e um botão por lead pra abrir a conversa com um rascunho de abordagem
+  pronto (nunca envia nada sozinho — você revisa e clica Enviar). Ver
+  `backend/src/routes/scoutRuns.routes.js` e `pegasus-scout/README.md` (seção "Controle remoto").
 
 ## Atendimento com IA (chat do site)
 

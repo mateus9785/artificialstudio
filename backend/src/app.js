@@ -8,6 +8,7 @@ import { chatRouter } from './routes/chat.routes.js'
 import { kanbanRouter } from './routes/kanban.routes.js'
 import { financeiroRouter } from './routes/financeiro.routes.js'
 import { whatsappRouter } from './routes/whatsapp.routes.js'
+import { scoutRunsRouter } from './routes/scoutRuns.routes.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -37,6 +38,7 @@ app.use('/api', chatRouter)
 app.use('/api', kanbanRouter)
 app.use('/api', financeiroRouter)
 app.use('/api', whatsappRouter)
+app.use('/api', scoutRunsRouter)
 
 app.use((err, req, res, next) => {
   console.error(err)

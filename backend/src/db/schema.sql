@@ -488,3 +488,26 @@ CREATE TABLE IF NOT EXISTS whatsapp_messages (
   UNIQUE KEY whatsapp_messages_external_unique (conversation_id, external_message_id),
   INDEX idx_whatsapp_messages_conversation (conversation_id, sent_at)
 );
+
+-- Fila de execucoes do pegasus-scout, pedidas pelo admin em /admin/whatsapp e
+-- processadas por um worker local (mesmo padrao do claude-kanban): o worker
+-- reivindica a linha 'todo' mais antiga via /admin/scout/runs/claim-next e
+-- reporta o resultado via mark-done/mark-error. So 1 linha fica 'doing' por
+-- vez -- e 1 browser Playwright rodando numa maquina so.
+CREATE TABLE IF NOT EXISTS scout_runs (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  niche VARCHAR(160) NOT NULL,
+  city VARCHAR(120) NOT NULL,
+  state CHAR(2) NULL,
+  radius_km DECIMAL(5, 2) NOT NULL DEFAULT 5,
+  max_results INT NOT NULL DEFAULT 60,
+  with_llm BOOLEAN NOT NULL DEFAULT TRUE,
+  status ENUM('todo', 'doing', 'done', 'error') NOT NULL DEFAULT 'todo',
+  result_json JSON NULL,
+  error TEXT NULL,
+  requested_by INT NULL,
+  started_at TIMESTAMP NULL,
+  finished_at TIMESTAMP NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_scout_runs_status (status)
+);

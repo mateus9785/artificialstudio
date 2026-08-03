@@ -353,6 +353,27 @@ export async function disconnectWhatsApp() {
   await setConnectionState({ status, qrData: null })
 }
 
+/** Cria (ou acha) a conversa 1:1 de um número sem depender de nenhuma mensagem ter
+ * chegado antes — usado pelo painel de leads do pegasus-scout (POST
+ * /admin/scout/leads/:id/start-conversation) para abrir uma conversa vazia, pronta
+ * para o admin revisar um rascunho e enviar manualmente. Não manda nada sozinho. */
+export async function getOrCreateConversationByPhone(phoneE164, { displayName } = {}) {
+  const digits = String(phoneE164).replace(/\D/g, '')
+  const jid = `${digits}@s.whatsapp.net`
+
+  const contact = await upsertContact({ jid, displayName, avatarUrl: undefined, phoneNumber: digits })
+
+  const [existingRows] = await pool.query('SELECT * FROM whatsapp_conversations WHERE contact_id = ?', [contact.id])
+  if (existingRows[0]) return existingRows[0]
+
+  const [result] = await pool.query(
+    'INSERT INTO whatsapp_conversations (contact_id, last_message_at, last_message_preview, unread_count) VALUES (?, NULL, NULL, 0)',
+    [contact.id],
+  )
+  const [rows] = await pool.query('SELECT * FROM whatsapp_conversations WHERE id = ?', [result.insertId])
+  return rows[0]
+}
+
 export async function sendWhatsAppMessage(jid, { text, imageBase64, imageMimeType }) {
   if (!socket || status !== 'connected') {
     throw new Error('WhatsApp não está conectado')
