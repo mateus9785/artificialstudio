@@ -40,6 +40,19 @@ function serializeRun(row) {
   }
 }
 
+// 'done' sem sinal `site_fora_do_ar` e o unico caso em que o site foi aberto
+// com sucesso — ver pegasus-scout/src/enrichment/enrichmentService.ts, que
+// grava esse sinal exatamente quando o dominio anunciado no Maps nao resolve
+// mais (nao e falha do robo, e informacao de prospeccao).
+function computeSiteStatus(row) {
+  if (!row.website) return 'sem_site'
+  if (row.site_fora_do_ar_motivo) return 'fora_do_ar'
+  if (row.enrichment_status === 'pending' || row.enrichment_status === 'running') return 'nao_verificado'
+  if (row.enrichment_status === 'failed') return 'falha_temporaria'
+  if (row.enrichment_status === 'skipped') return 'nao_verificado'
+  return 'ok'
+}
+
 function serializeLead(row) {
   return {
     id: row.id,
@@ -48,9 +61,14 @@ function serializeLead(row) {
     city: row.city,
     state: row.state,
     website: row.website,
+    address: row.address,
+    email: row.email,
     phoneE164: row.phone_e164,
     whatsappPhoneE164: row.whatsapp_phone_e164,
     instagramUrl: row.instagram_url,
+    instagramFollowers: row.instagram_followers,
+    facebookUrl: row.facebook_url,
+    facebookResponseTime: row.facebook_response_time,
     chatWidget: row.chat_widget,
     ecommercePlatform: row.ecommerce_platform,
     rating: row.rating !== null ? Number(row.rating) : null,
@@ -59,8 +77,18 @@ function serializeLead(row) {
     automationVerdict: row.automation_verdict,
     pipelineStatus: row.pipeline_status,
     mapsUrl: row.maps_url,
+    siteStatus: computeSiteStatus(row),
+    siteOfflineReason: row.site_fora_do_ar_motivo,
     segmento: row.segmento,
     porte: row.porte,
+    catalogo: row.catalogo,
+    vendeOnline: row.vende_online === null ? null : Boolean(row.vende_online),
+    atendePorWhatsapp: row.atende_por_whatsapp === null ? null : Boolean(row.atende_por_whatsapp),
+    vende: row.vende_json,
+    sinaisAutomacao: row.sinais_automacao_json,
+    dores: row.dores_json,
+    integracoes: row.integracoes_json,
+    confianca: row.confianca !== null ? Number(row.confianca) : null,
     resumo: row.resumo,
     ganchoAbordagem: row.gancho_abordagem,
   }
@@ -219,15 +247,22 @@ scoutRunsRouter.post(
 // ---- Leads encontrados (lidos direto das tabelas scout_* — mesmo schema/DB do pegasus-scout) ----
 
 const LEADS_SELECT_SQL = `
-  SELECT p.id, p.name, p.category, p.city, p.state, p.website, p.phone_e164,
-         p.whatsapp_phone_e164, p.instagram_url, p.chat_widget, p.ecommerce_platform,
-         p.rating, p.reviews_count, p.fit_score, p.automation_verdict, p.pipeline_status,
-         p.maps_url, b.segmento, b.porte, b.resumo, b.gancho_abordagem
+  SELECT p.id, p.name, p.category, p.city, p.state, p.website, p.address, p.email,
+         p.phone_e164, p.whatsapp_phone_e164, p.instagram_url, p.instagram_followers,
+         p.facebook_url, p.facebook_response_time, p.chat_widget, p.ecommerce_platform,
+         p.enrichment_status, p.rating, p.reviews_count, p.fit_score, p.automation_verdict,
+         p.pipeline_status, p.maps_url,
+         b.segmento, b.porte, b.resumo, b.gancho_abordagem, b.catalogo, b.vende_online,
+         b.atende_por_whatsapp, b.vende_json, b.sinais_automacao_json, b.dores_json,
+         b.integracoes_json, b.confianca,
+         sig.signal_value AS site_fora_do_ar_motivo
     FROM scout_prospects p
     LEFT JOIN scout_prospect_briefs b ON b.prospect_id = p.id
     LEFT JOIN scout_blocklist bl
       ON bl.phone_e164 = COALESCE(p.whatsapp_phone_e164, p.phone_e164)
      OR bl.domain = p.domain
+    LEFT JOIN scout_prospect_signals sig
+      ON sig.prospect_id = p.id AND sig.stage = 'enrichment' AND sig.signal_key = 'site_fora_do_ar'
    WHERE p.fit_score IS NOT NULL
      AND p.pipeline_status <> 'descartado'
      AND bl.id IS NULL

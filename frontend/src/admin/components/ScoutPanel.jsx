@@ -33,6 +33,22 @@ const PIPELINE_LABEL = {
   em_atendimento: 'Em atendimento',
 }
 
+const SITE_STATUS = {
+  ok: { label: 'Site abriu normalmente', color: '#4ade80' },
+  fora_do_ar: { label: 'Site fora do ar', color: '#f87171' },
+  falha_temporaria: { label: 'Falha ao acessar (temporária)', color: '#fbbf24' },
+  nao_verificado: { label: 'Ainda não verificado', color: '#a1a1aa' },
+  sem_site: { label: 'Sem site cadastrado', color: '#a1a1aa' },
+}
+
+const CATALOGO_LABEL = {
+  nenhum: 'Nenhum catálogo',
+  pequeno: 'Catálogo pequeno',
+  medio: 'Catálogo médio',
+  grande: 'Catálogo grande',
+  indefinido: 'Indefinido',
+}
+
 const BRAZIL_STATES = [
   { uf: 'AC', name: 'Acre' },
   { uf: 'AL', name: 'Alagoas' },
@@ -128,8 +144,31 @@ function DetailRow({ label, children }) {
   )
 }
 
+function TagList({ label, items }) {
+  if (!items || items.length === 0) return null
+  return (
+    <div>
+      <span className="text-[11px] font-medium block mb-1.5" style={{ color: '#71717a' }}>
+        {label}
+      </span>
+      <div className="flex flex-wrap gap-1.5">
+        {items.map((item, i) => (
+          <span
+            key={i}
+            className="text-[11px] px-2 py-1 rounded-md"
+            style={{ background: 'rgba(255,255,255,0.05)', color: '#d4d4d8' }}
+          >
+            {String(item)}
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function LeadDetailModal({ lead, isConnected, onClose, onStartConversation }) {
   const phone = lead.whatsappPhoneE164 || lead.phoneE164
+  const site = SITE_STATUS[lead.siteStatus] || null
 
   return (
     <div
@@ -151,14 +190,29 @@ function LeadDetailModal({ lead, isConnected, onClose, onStartConversation }) {
           </button>
         </div>
 
-        {lead.fitScore !== null && (
-          <span
-            className="self-start flex items-center gap-1 text-xs px-2 py-1 rounded-full"
-            style={{ background: 'rgba(34,211,238,0.12)', color: '#22d3ee' }}
-          >
-            <Star size={11} />
-            Score {lead.fitScore}
-          </span>
+        <div className="flex flex-wrap items-center gap-2">
+          {lead.fitScore !== null && (
+            <span
+              className="flex items-center gap-1 text-xs px-2 py-1 rounded-full"
+              style={{ background: 'rgba(34,211,238,0.12)', color: '#22d3ee' }}
+            >
+              <Star size={11} />
+              Score {lead.fitScore}
+            </span>
+          )}
+          {site && (
+            <span
+              className="flex items-center gap-1 text-xs px-2 py-1 rounded-full"
+              style={{ background: 'rgba(255,255,255,0.05)', color: site.color }}
+            >
+              ● {site.label}
+            </span>
+          )}
+        </div>
+        {lead.siteStatus === 'fora_do_ar' && lead.siteOfflineReason && (
+          <p className="text-[11px] -mt-2" style={{ color: '#71717a' }}>
+            Motivo: {lead.siteOfflineReason}
+          </p>
         )}
 
         <div className="grid grid-cols-2 gap-3">
@@ -167,8 +221,17 @@ function LeadDetailModal({ lead, isConnected, onClose, onStartConversation }) {
             {lead.city || '—'}
             {lead.state ? `-${lead.state}` : ''}
           </DetailRow>
+          <DetailRow label="Endereço">{lead.address}</DetailRow>
+          <DetailRow label="E-mail">{lead.email}</DetailRow>
           <DetailRow label="Segmento">{lead.segmento}</DetailRow>
           <DetailRow label="Porte">{lead.porte}</DetailRow>
+          <DetailRow label="Catálogo">{CATALOGO_LABEL[lead.catalogo] || lead.catalogo}</DetailRow>
+          <DetailRow label="Vende online?">
+            {lead.vendeOnline === null ? null : lead.vendeOnline ? 'Sim' : 'Não'}
+          </DetailRow>
+          <DetailRow label="Atende por WhatsApp?">
+            {lead.atendePorWhatsapp === null ? null : lead.atendePorWhatsapp ? 'Sim' : 'Não'}
+          </DetailRow>
           <DetailRow label="Avaliação">
             {lead.rating !== null ? `${lead.rating} ★ (${lead.reviewsCount ?? 0} avaliações)` : null}
           </DetailRow>
@@ -177,12 +240,22 @@ function LeadDetailModal({ lead, isConnected, onClose, onStartConversation }) {
           <DetailRow label="Widget de chat">{lead.chatWidget}</DetailRow>
           <DetailRow label="Plataforma de e-commerce">{lead.ecommercePlatform}</DetailRow>
           <DetailRow label="Telefone">{phone}</DetailRow>
+          <DetailRow label="Instagram">{lead.instagramFollowers ? `${lead.instagramFollowers} seguidores` : null}</DetailRow>
+          <DetailRow label="Facebook">{lead.facebookResponseTime}</DetailRow>
+          <DetailRow label="Confiança da análise da IA">
+            {lead.confianca !== null ? `${Math.round(lead.confianca * 100)}%` : null}
+          </DetailRow>
         </div>
+
+        <TagList label="O que vende" items={lead.vende} />
+        <TagList label="Sinais de automação encontrados" items={lead.sinaisAutomacao} />
+        <TagList label="Dores de atendimento identificadas" items={lead.dores} />
+        <TagList label="Integrações úteis" items={lead.integracoes} />
 
         {lead.resumo && (
           <div>
             <span className="text-[11px] font-medium block mb-1" style={{ color: '#71717a' }}>
-              Resumo
+              Resumo da IA
             </span>
             <p className="text-xs leading-relaxed" style={{ color: '#d4d4d8' }}>
               {lead.resumo}
@@ -210,6 +283,11 @@ function LeadDetailModal({ lead, isConnected, onClose, onStartConversation }) {
           {lead.instagramUrl && (
             <a href={lead.instagramUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1 hover:underline">
               <ExternalLink size={11} /> Instagram
+            </a>
+          )}
+          {lead.facebookUrl && (
+            <a href={lead.facebookUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1 hover:underline">
+              <ExternalLink size={11} /> Facebook
             </a>
           )}
           {lead.mapsUrl && (
