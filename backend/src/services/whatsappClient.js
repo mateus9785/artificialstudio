@@ -12,6 +12,7 @@ import {
   Browsers,
 } from 'baileys'
 import { pool } from '../db/pool.js'
+import { enqueueSuggestion } from './waSuggestionWorker.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const SESSION_DIR = path.join(__dirname, '../../whatsapp-session')
@@ -53,10 +54,12 @@ function jidToPhoneNumber(jid) {
   return jid.split('@')[0].split(':')[0]
 }
 
-/** Portão de ingestão: só guarda mensagem de numero que e lead do pegasus-scout
- * (scout_prospects.whatsapp_phone_e164/phone_e164). Sem isso, syncFullHistory
- * traria de volta todo o historico pessoal do numero escaneado, contato a
- * contato, do jeito que a limpeza manual em produção removeu. */
+/** Portão de ingestão do HISTÓRICO: no replay de syncFullHistory, só guarda
+ * mensagem de numero que e lead do pegasus-scout (whatsapp_phone_e164/
+ * phone_e164). Sem isso, um re-pareamento traria de volta todo o historico
+ * pessoal do numero escaneado, contato a contato, do jeito que a limpeza
+ * manual em produção removeu. Mensagens LIVE não passam por aqui: qualquer
+ * contato 1:1 é ingerido, porque o atendimento agora acontece pelo WhatsApp. */
 async function isKnownLeadPhone(phoneDigits) {
   if (!phoneDigits) return false
   const [rows] = await pool.query(
@@ -218,7 +221,7 @@ async function ingestOne(msg, { isHistory = false } = {}) {
   if (!msg.message || msg.message.protocolMessage) return
 
   const phoneNumber = remoteJid.endsWith('@s.whatsapp.net') ? jidToPhoneNumber(remoteJid) : undefined
-  if (!(await isKnownLeadPhone(phoneNumber))) return // numero nao e lead do pegasus-scout: nao ingere
+  if (isHistory && !(await isKnownLeadPhone(phoneNumber))) return // historico so reimporta leads do scout
 
   const mediaKey = MEDIA_MESSAGE_TYPES.find((key) => msg.message?.[key])
   const attachment = mediaKey ? await saveMediaAttachment(msg, mediaKey) : null
@@ -238,7 +241,7 @@ async function ingestOne(msg, { isHistory = false } = {}) {
   const preview = text ? text.slice(0, 150) : attachment ? `[${attachment.type}]` : ''
   const conversation = await upsertConversationForMessage(contact, { sentAt, preview, direction }, { isHistory })
 
-  await insertMessage({
+  const messageId = await insertMessage({
     conversationId: conversation.id,
     direction,
     status: direction === 'inbound' ? 'delivered' : 'sent',
@@ -247,6 +250,15 @@ async function ingestOne(msg, { isHistory = false } = {}) {
     attachment,
     sentAt,
   })
+
+  // Mensagem live recebida numa conversa com IA ligada: enfileira a geração da
+  // sugestão de resposta (enqueueSuggestion já marca rascunhos antigos como
+  // superseded). A sugestão nunca é enviada sozinha — fica aguardando o admin.
+  if (messageId && direction === 'inbound' && !isHistory && conversation.ai_enabled) {
+    enqueueSuggestion(conversation.id, 'reply', { triggerMessageId: messageId }).catch((err) => {
+      logger.error({ err, conversationId: conversation.id }, 'failed to enqueue ai suggestion')
+    })
+  }
 }
 
 async function handleMessagesUpsert(upsert) {

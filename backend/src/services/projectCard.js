@@ -28,7 +28,7 @@ function priceLine(quote) {
   return `${min} a ${max}`
 }
 
-function buildDescription(quote, conversation) {
+function buildDescription(quote, conversation, originLabel) {
   const bloco = (titulo, corpo) => (corpo ? `## ${titulo}\n\n${corpo}\n` : '')
   const lista = (items) => (items?.length ? items.map((item) => `- ${item}`).join('\n') : '')
 
@@ -41,7 +41,7 @@ function buildDescription(quote, conversation) {
     quote.monthly ? `- Mensalidade: ${money(quote.monthly)}` : null,
     `- Prazo acordado: ${quote.timelineWeeks ? `${quote.timelineWeeks} semanas` : 'não definido'}`,
     `- Condições de pagamento: ${quote.paymentTerms || 'não definidas'}`,
-    `- Conversa de origem: /admin/conversas-ia (conversa #${conversation.id})`,
+    `- Conversa de origem: ${originLabel || `/admin/conversas-ia (conversa #${conversation.id})`}`,
   ]
     .filter(Boolean)
     .join('\n')
@@ -69,13 +69,13 @@ function buildDescription(quote, conversation) {
  * "confirmo" digitado no chat por um visitante anônimo não pode disparar uma sessão de
  * desenvolvimento sozinha. Quem arma é o humano, pela tela.
  */
-export async function createCardFromQuote(quote, conversation) {
+export async function createCardFromQuote(quote, conversation, { originLabel } = {}) {
   const labelId = await ensureLabel()
   const title = `${quote.projectName}${quote.companyName ? ` — ${quote.companyName}` : ''}`.slice(0, 255)
 
   const [result] = await pool.query(
     'INSERT INTO kanban_cards (title, description, label_id, run_immediately) VALUES (?, ?, ?, 0)',
-    [title, buildDescription(quote, conversation), labelId],
+    [title, buildDescription(quote, conversation, originLabel), labelId],
   )
 
   return result.insertId

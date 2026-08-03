@@ -27,6 +27,7 @@ lightsail/
 *.sln
 *.sw?
 
-# Saída gerada pelo harness de personas (backend/scripts/test-personas.js)
+# Saída gerada pelos harness de personas (test-personas.js e test-personas-wa.js)
 backend/tests/personas/
+backend/tests/personas-wa/
 backend/tests/relatorio-*.md

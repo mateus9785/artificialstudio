@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import Header from './components/Header'
 import Footer from './components/Footer'
-import ChatWidget from './components/ChatWidget'
+import WhatsAppButton from './components/WhatsAppButton'
 import CookieConsent from './components/CookieConsent'
 import { getStoredConsent, initTrackingScripts } from './lib/analytics'
 
@@ -29,7 +29,7 @@ export default function Layout({ children }) {
       <Header />
       <main>{children}</main>
       <Footer />
-      <ChatWidget />
+      <WhatsAppButton />
       {!consent && <CookieConsent onDecision={setConsent} />}
     </div>
   )

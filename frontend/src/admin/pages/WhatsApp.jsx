@@ -1,6 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
-import { Send, User, CheckCheck, Clock, AlertTriangle, MessageCircle, Paperclip } from 'lucide-react'
+import {
+  Send,
+  User,
+  CheckCheck,
+  Clock,
+  AlertTriangle,
+  MessageCircle,
+  Paperclip,
+  Bot,
+  Sparkles,
+  RefreshCw,
+  X,
+  Pencil,
+  Building2,
+} from 'lucide-react'
 import { api, API_URL } from '../../lib/api'
 import { getAdminToken } from '../../lib/adminAuth'
 import { useAdminGuard } from '../useAdminGuard'
@@ -71,6 +85,174 @@ function ConnectScreen({ connectionStatus, qr, onConnect }) {
   )
 }
 
+/** Rascunho da IA aguardando o admin — nada é enviado sem clique. */
+function SuggestionPanel({ suggestion, busy, onApprove, onEdit, onRegenerate, onDiscard }) {
+  if (!suggestion) return null
+
+  const isGenerating = suggestion.status === 'pending' || suggestion.status === 'running'
+  const isError = suggestion.status === 'error'
+
+  return (
+    <div
+      className="mx-3 mb-2 rounded-xl p-3 flex flex-col gap-2 flex-shrink-0"
+      style={{ background: 'rgba(34,211,238,0.05)', border: '1px solid rgba(34,211,238,0.2)' }}
+    >
+      <div className="flex items-center gap-1.5 text-xs" style={{ color: '#22d3ee' }}>
+        <Sparkles size={12} />
+        <span className="font-medium">
+          {suggestion.kind === 'cold_outreach' ? 'Abordagem sugerida pela IA' : 'Resposta sugerida pela IA'}
+        </span>
+      </div>
+
+      {isGenerating && (
+        <div className="flex items-center gap-2 text-xs py-1" style={{ color: '#a1a1aa' }}>
+          <RefreshCw size={12} className="animate-spin" />
+          Gerando sugestão... (pode levar até 2 minutos)
+        </div>
+      )}
+
+      {isError && (
+        <div className="flex items-start gap-2 text-xs py-1" style={{ color: '#f87171' }}>
+          <AlertTriangle size={12} className="mt-0.5 flex-shrink-0" />
+          <span>Falha ao gerar: {suggestion.error || 'erro desconhecido'}</span>
+        </div>
+      )}
+
+      {suggestion.status === 'draft' && (
+        <p className="text-sm leading-relaxed" style={{ color: '#e4e4e7', whiteSpace: 'pre-wrap' }}>
+          {suggestion.suggestedText}
+        </p>
+      )}
+
+      <div className="flex items-center gap-2 flex-wrap">
+        {suggestion.status === 'draft' && (
+          <>
+            <button
+              onClick={onApprove}
+              disabled={busy}
+              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg cursor-pointer disabled:opacity-40"
+              style={{ background: 'linear-gradient(135deg, #0891b2, #7c3aed)', color: 'white' }}
+            >
+              <Send size={11} /> Enviar
+            </button>
+            <button
+              onClick={onEdit}
+              disabled={busy}
+              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg cursor-pointer disabled:opacity-40"
+              style={{ background: 'rgba(255,255,255,0.06)', color: '#e4e4e7' }}
+            >
+              <Pencil size={11} /> Editar
+            </button>
+          </>
+        )}
+        {(suggestion.status === 'draft' || isError) && (
+          <>
+            <button
+              onClick={onRegenerate}
+              disabled={busy}
+              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg cursor-pointer disabled:opacity-40"
+              style={{ background: 'rgba(255,255,255,0.06)', color: '#e4e4e7' }}
+            >
+              <RefreshCw size={11} /> Regenerar
+            </button>
+            <button
+              onClick={onDiscard}
+              disabled={busy}
+              className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg cursor-pointer disabled:opacity-40"
+              style={{ background: 'rgba(255,255,255,0.06)', color: '#a1a1aa' }}
+            >
+              <X size={11} /> Descartar
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+const ESTAGIO_LABEL = {
+  abertura: 'Abertura',
+  descoberta: 'Descoberta',
+  proposta: 'Proposta',
+  orcamento_apresentado: 'Orçamento apresentado',
+  orcamento_confirmado: 'Orçamento confirmado',
+  encerrado: 'Encerrado',
+}
+
+/**
+ * Painel lateral com os dados que a IA coleta durante a conversa (nome, empresa,
+ * contato, requisitos...) — mesmo papel do QuotePanel da tela Conversas IA — e,
+ * quando o contato é lead do pegasus-scout, os dados de prospecção.
+ */
+function CollectedDataPanel({ collectedData, lead }) {
+  const data = collectedData || {}
+  const hasCollected = Object.entries(data).some(
+    ([key, value]) => key !== 'kanban_card_id' && value !== null && value !== undefined && (!Array.isArray(value) || value.length > 0),
+  )
+
+  if (!hasCollected && !lead) return null
+
+  const Row = ({ label, value }) =>
+    value === null || value === undefined || value === '' ? null : (
+      <div className="flex flex-col gap-0.5">
+        <span className="text-[10px] uppercase tracking-wide" style={{ color: '#52525b' }}>
+          {label}
+        </span>
+        <span className="text-xs leading-relaxed" style={{ color: '#d4d4d8' }}>
+          {value}
+        </span>
+      </div>
+    )
+
+  return (
+    <div
+      className="rounded-xl p-4 flex flex-col gap-3 overflow-y-auto"
+      style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', maxHeight: '40vh' }}
+    >
+      {lead && (
+        <div className="flex flex-col gap-2 pb-3" style={{ borderBottom: hasCollected ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
+          <div className="flex items-center gap-1.5 text-xs font-medium" style={{ color: '#a78bfa' }}>
+            <Building2 size={12} /> Lead do Pegasus Scout
+          </div>
+          <Row label="Empresa" value={lead.name} />
+          <Row label="Segmento" value={lead.segmento || lead.category} />
+          <Row label="Cidade" value={lead.city && lead.state ? `${lead.city}/${lead.state}` : lead.city} />
+          <Row label="Fit score" value={lead.fitScore != null ? `${lead.fitScore}/100` : null} />
+          <Row label="Resumo" value={lead.resumo} />
+          <Row label="Gancho" value={lead.ganchoAbordagem} />
+        </div>
+      )}
+
+      {hasCollected && (
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-1.5 text-xs font-medium" style={{ color: '#22d3ee' }}>
+            <Sparkles size={12} /> Dados coletados na conversa
+          </div>
+          <Row label="Nome" value={data.nome} />
+          <Row label="Empresa" value={data.empresa} />
+          <Row label="Contato" value={data.contato} />
+          <Row label="Tipo de serviço" value={data.tipo_de_servico} />
+          <Row label="Estágio" value={ESTAGIO_LABEL[data.estagio] || data.estagio} />
+          {Array.isArray(data.requisitos) && data.requisitos.length > 0 && (
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[10px] uppercase tracking-wide" style={{ color: '#52525b' }}>
+                Requisitos
+              </span>
+              <ul className="text-xs leading-relaxed flex flex-col gap-0.5" style={{ color: '#d4d4d8' }}>
+                {data.requisitos.map((req, i) => (
+                  <li key={i}>- {req}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <Row label="Observações" value={data.observacoes} />
+          {data.kanban_card_id && <Row label="Card no kanban" value={`#${data.kanban_card_id} (Produção Automatizada)`} />}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function WhatsApp() {
   const { handleError } = useAdminGuard()
   const [connection, setConnection] = useState(null)
@@ -79,6 +261,10 @@ export default function WhatsApp() {
   const [detail, setDetail] = useState(null)
   const [reply, setReply] = useState('')
   const [sending, setSending] = useState(false)
+  const [suggestionBusy, setSuggestionBusy] = useState(false)
+  // Sugestão que o admin mandou para o input via "Editar": o envio do form passa
+  // pela rota de aprovação (grava final_text) em vez do envio comum.
+  const [editingSuggestionId, setEditingSuggestionId] = useState(null)
   const messagesEndRef = useRef(null)
 
   const loadStatus = useCallback(() => {
@@ -123,6 +309,7 @@ export default function WhatsApp() {
   useEffect(() => {
     if (!selectedId) return
     setDetail(null)
+    setEditingSuggestionId(null)
     loadDetail(selectedId)
     const interval = setInterval(() => loadDetail(selectedId), DETAIL_POLL_MS)
     return () => clearInterval(interval)
@@ -154,7 +341,12 @@ export default function WhatsApp() {
     setReply('')
     setSending(true)
     try {
-      await api.post(`/admin/whatsapp/conversations/${selectedId}/messages`, { text }, getAdminToken())
+      if (editingSuggestionId) {
+        await api.post(`/admin/whatsapp/suggestions/${editingSuggestionId}/approve`, { text }, getAdminToken())
+        setEditingSuggestionId(null)
+      } else {
+        await api.post(`/admin/whatsapp/conversations/${selectedId}/messages`, { text }, getAdminToken())
+      }
       loadDetail(selectedId)
       loadConversations()
     } catch (err) {
@@ -164,13 +356,74 @@ export default function WhatsApp() {
     }
   }
 
+  async function approveSuggestion() {
+    if (!detail?.suggestion || suggestionBusy) return
+    setSuggestionBusy(true)
+    try {
+      await api.post(`/admin/whatsapp/suggestions/${detail.suggestion.id}/approve`, {}, getAdminToken())
+      loadDetail(selectedId)
+      loadConversations()
+    } catch (err) {
+      handleError(err)
+    } finally {
+      setSuggestionBusy(false)
+    }
+  }
+
+  function editSuggestion() {
+    if (!detail?.suggestion?.suggestedText) return
+    setReply(detail.suggestion.suggestedText)
+    setEditingSuggestionId(detail.suggestion.id)
+  }
+
+  async function regenerateSuggestion() {
+    if (!selectedId || suggestionBusy) return
+    setSuggestionBusy(true)
+    setEditingSuggestionId(null)
+    try {
+      await api.post(`/admin/whatsapp/conversations/${selectedId}/suggestion/regenerate`, {}, getAdminToken())
+      loadDetail(selectedId)
+    } catch (err) {
+      handleError(err)
+    } finally {
+      setSuggestionBusy(false)
+    }
+  }
+
+  async function discardSuggestion() {
+    if (!detail?.suggestion || suggestionBusy) return
+    setSuggestionBusy(true)
+    setEditingSuggestionId(null)
+    try {
+      await api.post(`/admin/whatsapp/suggestions/${detail.suggestion.id}/discard`, {}, getAdminToken())
+      loadDetail(selectedId)
+    } catch (err) {
+      handleError(err)
+    } finally {
+      setSuggestionBusy(false)
+    }
+  }
+
+  async function toggleAi() {
+    if (!selectedId) return
+    try {
+      await api.post(`/admin/whatsapp/conversations/${selectedId}/ai-toggle`, {}, getAdminToken())
+      loadDetail(selectedId)
+      loadConversations()
+    } catch (err) {
+      handleError(err)
+    }
+  }
+
+  const aiEnabled = detail?.conversation?.aiEnabled
+
   return (
     <div>
       <h1 className="text-xl font-semibold mb-1" style={{ color: '#f4f4f5' }}>
         WhatsApp
       </h1>
       <p className="text-sm mb-6" style={{ color: '#71717a' }}>
-        Conversas do número conectado via WhatsApp Web.
+        Conversas do número conectado via WhatsApp Web. A IA sugere respostas — você aprova antes de enviar.
       </p>
 
       <div className="flex flex-col xl:grid xl:grid-cols-[260px_1fr_320px] gap-4 xl:h-[72vh]">
@@ -208,14 +461,30 @@ export default function WhatsApp() {
                         <span className="text-sm font-medium truncate" style={{ color: '#e4e4e7' }}>
                           {c.displayName || c.phoneNumber || 'Contato'}
                         </span>
-                        {c.unreadCount > 0 && (
-                          <span
-                            className="text-xs px-1.5 rounded-full flex-shrink-0"
-                            style={{ background: '#22d3ee', color: '#050505' }}
-                          >
-                            {c.unreadCount}
-                          </span>
-                        )}
+                        <span className="flex items-center gap-1 flex-shrink-0">
+                          {c.suggestionStatus === 'draft' && (
+                            <Sparkles size={11} style={{ color: '#22d3ee' }} title="Sugestão da IA pronta" />
+                          )}
+                          {(c.suggestionStatus === 'pending' || c.suggestionStatus === 'running') && (
+                            <RefreshCw size={11} className="animate-spin" style={{ color: '#71717a' }} />
+                          )}
+                          {c.isLead && (
+                            <span
+                              className="text-[9px] px-1 rounded uppercase tracking-wide"
+                              style={{ background: 'rgba(167,139,250,0.15)', color: '#a78bfa' }}
+                            >
+                              lead
+                            </span>
+                          )}
+                          {c.unreadCount > 0 && (
+                            <span
+                              className="text-xs px-1.5 rounded-full"
+                              style={{ background: '#22d3ee', color: '#050505' }}
+                            >
+                              {c.unreadCount}
+                            </span>
+                          )}
+                        </span>
                       </div>
                       <span className="text-xs truncate block" style={{ color: '#71717a' }}>
                         {c.lastMessage}
@@ -243,16 +512,40 @@ export default function WhatsApp() {
                     style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
                   >
                     <ContactAvatar avatarUrl={detail.conversation.avatarUrl} />
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium truncate" style={{ color: '#e4e4e7' }}>
-                        {detail.conversation.displayName || detail.conversation.phoneNumber || 'Contato'}
-                      </p>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium truncate" style={{ color: '#e4e4e7' }}>
+                          {detail.conversation.displayName || detail.conversation.phoneNumber || 'Contato'}
+                        </p>
+                        {detail.lead && (
+                          <span
+                            className="text-[9px] px-1.5 py-0.5 rounded uppercase tracking-wide flex-shrink-0"
+                            style={{ background: 'rgba(167,139,250,0.15)', color: '#a78bfa' }}
+                            title={detail.lead.name}
+                          >
+                            lead
+                          </span>
+                        )}
+                      </div>
                       {detail.conversation.phoneNumber && (
                         <p className="text-xs truncate" style={{ color: '#71717a' }}>
                           {detail.conversation.phoneNumber}
                         </p>
                       )}
                     </div>
+                    <button
+                      onClick={toggleAi}
+                      title={aiEnabled ? 'IA ligada nesta conversa — clique para desligar' : 'IA desligada nesta conversa — clique para ligar'}
+                      className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg cursor-pointer flex-shrink-0"
+                      style={{
+                        background: aiEnabled ? 'rgba(34,211,238,0.1)' : 'rgba(255,255,255,0.05)',
+                        color: aiEnabled ? '#22d3ee' : '#52525b',
+                        border: `1px solid ${aiEnabled ? 'rgba(34,211,238,0.25)' : 'rgba(255,255,255,0.08)'}`,
+                      }}
+                    >
+                      <Bot size={13} />
+                      {aiEnabled ? 'IA on' : 'IA off'}
+                    </button>
                   </div>
 
                   <div className="flex-1 p-4 flex flex-col gap-3 overflow-y-auto">
@@ -294,6 +587,17 @@ export default function WhatsApp() {
                     <div ref={messagesEndRef} />
                   </div>
 
+                  {!editingSuggestionId && (
+                    <SuggestionPanel
+                      suggestion={detail.suggestion}
+                      busy={suggestionBusy}
+                      onApprove={approveSuggestion}
+                      onEdit={editSuggestion}
+                      onRegenerate={regenerateSuggestion}
+                      onDiscard={discardSuggestion}
+                    />
+                  )}
+
                   <form
                     onSubmit={sendReply}
                     className="p-3 flex gap-2 flex-shrink-0"
@@ -302,14 +606,28 @@ export default function WhatsApp() {
                     <input
                       value={reply}
                       onChange={(e) => setReply(e.target.value)}
-                      placeholder="Responder..."
+                      placeholder={editingSuggestionId ? 'Editando sugestão da IA — Enter envia a versão editada' : 'Responder...'}
                       className="flex-1 min-w-0 px-3.5 py-2.5 rounded-xl text-sm outline-none"
                       style={{
                         background: 'rgba(255,255,255,0.04)',
-                        border: '1px solid rgba(255,255,255,0.08)',
+                        border: editingSuggestionId ? '1px solid rgba(34,211,238,0.35)' : '1px solid rgba(255,255,255,0.08)',
                         color: '#e4e4e7',
                       }}
                     />
+                    {editingSuggestionId && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingSuggestionId(null)
+                          setReply('')
+                        }}
+                        aria-label="Cancelar edição da sugestão"
+                        className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 cursor-pointer"
+                        style={{ background: 'rgba(255,255,255,0.05)', color: '#a1a1aa' }}
+                      >
+                        <X size={15} />
+                      </button>
+                    )}
                     <button
                       type="submit"
                       disabled={!reply.trim() || sending}
@@ -330,7 +648,12 @@ export default function WhatsApp() {
         )}
         </div>
 
-        <ScoutPanel isConnected={isConnected} onStartConversation={handleStartConversation} />
+        <div className="flex flex-col gap-4 min-h-0">
+          {isConnected && detail && (
+            <CollectedDataPanel collectedData={detail.conversation.collectedData} lead={detail.lead} />
+          )}
+          <ScoutPanel isConnected={isConnected} onStartConversation={handleStartConversation} />
+        </div>
       </div>
     </div>
   )

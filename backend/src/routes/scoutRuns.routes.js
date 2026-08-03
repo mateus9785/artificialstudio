@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { pool } from '../db/pool.js'
 import { requireAdmin } from '../middleware/requireAdmin.js'
 import { getOrCreateConversationByPhone } from '../services/whatsappClient.js'
+import { enqueueSuggestion } from '../services/waSuggestionWorker.js'
 
 export const scoutRunsRouter = Router()
 
@@ -285,7 +286,7 @@ scoutRunsRouter.post(
   requireAdmin,
   asyncHandler(async (req, res) => {
     const [rows] = await pool.query(
-      'SELECT id, name, whatsapp_phone_e164, phone_e164 FROM scout_prospects WHERE id = ?',
+      'SELECT id, name, domain, whatsapp_phone_e164, phone_e164 FROM scout_prospects WHERE id = ?',
       [req.params.id],
     )
     const prospect = rows[0]
@@ -296,6 +297,15 @@ scoutRunsRouter.post(
       return res.status(422).json({ error: 'Este lead não tem telefone cadastrado.' })
     }
 
+    // Opt-out é obrigação legal: número/domínio na blocklist não recebe abordagem, nem manual.
+    const [blocked] = await pool.query(
+      'SELECT id FROM scout_blocklist WHERE phone_e164 = ? OR (domain IS NOT NULL AND domain = ?) LIMIT 1',
+      [phone, prospect.domain],
+    )
+    if (blocked.length > 0) {
+      return res.status(422).json({ error: 'Este lead pediu para não ser contatado (blocklist).' })
+    }
+
     const [briefRows] = await pool.query(
       'SELECT gancho_abordagem FROM scout_prospect_briefs WHERE prospect_id = ? ORDER BY updated_at DESC LIMIT 1',
       [req.params.id],
@@ -304,10 +314,15 @@ scoutRunsRouter.post(
 
     const conversation = await getOrCreateConversationByPhone(phone, { displayName: prospect.name })
 
+    // O gancho do brief fica como rascunho imediato; a IA gera a abordagem fria
+    // personalizada em segundo plano (30s–2min) e a sugestão substitui o gancho
+    // na tela quando ficar pronta. Nada é enviado sem o clique do admin.
+    await enqueueSuggestion(conversation.id, 'cold_outreach', { prospectId: prospect.id })
+
     const draftText = gancho
       ? gancho
       : `Olá! Vi o ${prospect.name} e gostaria de conversar sobre como facilitar o atendimento por aqui.`
 
-    res.json({ conversationId: conversation.id, draftText })
+    res.json({ conversationId: conversation.id, draftText, suggestionQueued: true })
   }),
 )

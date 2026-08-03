@@ -36,37 +36,48 @@ Landing page + backend (Node/Express/MySQL) com painel administrativo em `/admin
 - **Blog**: criar, editar e excluir os posts exibidos na landing page.
 - **Analytics**: pageviews, sessões e consentimento LGPD coletados pelo próprio backend (dado próprio,
   independente dos dashboards do GA4/Clarity/Meta, que continuam disponíveis nas respectivas plataformas).
-- **Conversas IA**: o chat do site é atendido por uma IA comercial que levanta os requisitos do
-  projeto e fecha um orçamento. Quando o cliente confirma, um card é criado automaticamente em
-  **Produção Automatizada** (em "Para Fazer", sem executar nada sozinho). Nesta tela você lê a
-  conversa, vê o orçamento extraído, abre o card gerado e pode pausar a IA para responder você mesmo.
-- **WhatsApp**: conversas do número conectado via WhatsApp Web (Baileys). A lateral direita lista os
-  leads encontrados pelo [pegasus-scout](../pegasus-scout) (robô de prospecção que roda **local**, num
-  worker controlado por esta tela — mesmo padrão do `claude-kanban`), com um formulário pra escolher
-  nicho/cidade/UF e mandar rodar, e um botão por lead pra abrir a conversa com um rascunho de abordagem
-  pronto (nunca envia nada sozinho — você revisa e clica Enviar). Ver
-  `backend/src/routes/scoutRuns.routes.js` e `pegasus-scout/README.md` (seção "Controle remoto").
+- **Conversas IA**: tela do antigo chat do site (pipeline hoje **dormant** — o widget foi trocado
+  pelo botão de WhatsApp na landing). Fica no ar para consultar o histórico comercial e como
+  rollback barato.
+- **WhatsApp**: o canal de atendimento. Conversas do número conectado via WhatsApp Web (Baileys),
+  agora com a **IA vendedora**: toda mensagem recebida (em conversa com "IA on") gera uma **sugestão
+  de resposta** que você aprova, edita, regenera ou descarta — **nada é enviado sem o seu clique**.
+  O painel lateral mostra os dados que a IA coleta durante a conversa (nome, empresa, contato,
+  requisitos, estágio) e, quando o número é lead do scout, os dados de prospecção. A lateral direita
+  lista os leads do [pegasus-scout](../pegasus-scout); o botão "iniciar conversa" enfileira uma
+  **abordagem fria personalizada** gerada pela IA com os dados do lead (o gancho do brief fica de
+  rascunho enquanto ela não chega). Quando uma sugestão aprovada confirma orçamento, o card é criado
+  em **Produção Automatizada**. Ver `backend/src/services/waSuggestionWorker.js` e
+  `backend/src/routes/whatsapp.routes.js`.
 
-## Atendimento com IA (chat do site)
+## IA vendedora (WhatsApp)
 
-As regras, o funil e a tabela de preços do robô ficam em `backend/ai-atendimento/`
-(`CLAUDE.md`, `ROTEIRO.md`, `PRECOS.md`) — é conteúdo versionado, editável sem mexer em código.
-Editar qualquer um dos três descarta as sessões em andamento para que a mudança valha na hora.
+As regras do modo vendedor ficam em `backend/ai-atendimento/vendedor-wa/` (`CLAUDE.md` = persona e
+técnicas de venda, `ROTEIRO.md` = funil + abordagem fria + follow-up, `EXEMPLOS.md` = few-shot de
+mensagens boas e ruins). A tabela de preços é a mesma do chat do site: `backend/ai-atendimento/PRECOS.md`.
+Tudo é conteúdo versionado, editável sem mexer em código — o fingerprint dos arquivos etiqueta cada
+sugestão e cada rodada de testes, para comparar versões de prompt.
 
-O backend chama o CLI `claude` como subprocesso (mesmo mecanismo do `chatbot_7m`, sem API paga), então
-**o `claude` precisa estar instalado e autenticado no mesmo usuário que roda o backend** — inclusive
-no servidor. Sem ele, o visitante recebe uma mensagem de fallback com o WhatsApp em vez de silêncio.
-Para desligar o atendimento automático: `AI_CHAT_ENABLED=false`.
+O backend chama o CLI `claude` como subprocesso (sem API paga), então **o `claude` precisa estar
+instalado e autenticado no mesmo usuário que roda o backend** — inclusive no servidor. Para desligar
+a geração de sugestões (e o chat do site): `AI_CHAT_ENABLED=false`. Para desligar só numa conversa
+(ex.: contato pessoal), use o botão "IA on/off" no cabeçalho da conversa.
 
-Teste do atendimento ponta a ponta com 10 personas:
+Teste do vendedor com 12 personas (abordagem fria, SPIN, objeções, opt-out, injection, orçamento):
 
 ```
 cd backend
-npm run test:personas          # todas
-npm run test:personas -- 3 7   # só as personas 3 e 7
+npm run test:personas:wa -- baseline    # todas, etiquetadas como "baseline"
+npm run test:personas:wa -- 3 7 v2      # só as personas 3 e 7, etiqueta "v2"
+node scripts/compare-persona-runs.js tests/personas-wa/results-A.json tests/personas-wa/results-B.json
 ```
 
-Os transcritos saem em `backend/tests/personas/` e o resumo em `backend/tests/relatorio-<data>.md`.
+Cada run grava JSON com notas de um LLM-judge (rubrica por persona) + violações verificadas por
+código, e transcritos legíveis em `backend/tests/personas-wa/`. Rode um `baseline` antes de editar os
+prompts e compare depois — é assim que se mede se a mudança melhorou o robô.
+
+O harness antigo do chat do site continua disponível: `npm run test:personas` (10 personas, exige o
+backend no ar com `AI_CHAT_ENABLED` ligado).
 
 ## Rastreamento (Backstage)
 

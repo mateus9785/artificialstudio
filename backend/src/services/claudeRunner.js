@@ -1,4 +1,4 @@
-import { execFile } from 'node:child_process'
+import { spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -125,28 +125,71 @@ ${visitorText}
 ${RESPONSE_FORMAT_INSTRUCTIONS}`
 }
 
-function runClaudeProcess(args) {
+const IS_WINDOWS = process.platform === 'win32'
+const NOT_INSTALLED_MESSAGE =
+  'O CLI `claude` não está no PATH do usuário que roda o backend. Instale e autentique o Claude Code no servidor, ou desligue com AI_CHAT_ENABLED=false.'
+
+/**
+ * O prompt vai por STDIN, não como argumento de `-p` — por dois motivos: no Windows o `claude` é um
+ * shim `.cmd` (que exige shell, e shell não tem como receber com segurança um argumento de várias
+ * linhas com aspas), e o primeiro turno injeta arquivos inteiros, o que estoura o limite de ~32KB da
+ * linha de comando do Windows. `claude -p` sem valor lê o prompt do stdin — comportamento
+ * documentado do modo print, idêntico no Linux de produção.
+ */
+function runClaudeProcess(args, { cwd = CONTENT_DIR, stdinInput = null } = {}) {
   return new Promise((resolve, reject) => {
-    execFile(
-      'claude',
-      args,
-      { cwd: CONTENT_DIR, maxBuffer: 10 * 1024 * 1024, timeout: TIMEOUT_MS, windowsHide: true },
-      (err, stdout, stderr) => {
-        if (err) {
-          if (err.code === 'ENOENT') {
-            reject(
-              new ClaudeNotInstalledError(
-                'O CLI `claude` não está no PATH do usuário que roda o backend. Instale e autentique o Claude Code no servidor, ou desligue com AI_CHAT_ENABLED=false.',
-              ),
-            )
-            return
-          }
-          reject(new Error(`claude falhou (${String(err.code)}): ${stderr || err.message}`))
+    const child = spawn(IS_WINDOWS ? 'claude.cmd' : 'claude', args, {
+      cwd,
+      windowsHide: true,
+      // shell só no Windows, para o cmd.exe resolver o shim .cmd. Os argumentos são todos tokens
+      // sem espaço (flags, modelo, uuid) — o prompt, que teria aspas e quebras, vai pelo stdin.
+      shell: IS_WINDOWS,
+    })
+
+    let stdout = ''
+    let stderr = ''
+    let settled = false
+
+    const finish = (fn, value) => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      fn(value)
+    }
+
+    const timer = setTimeout(() => {
+      child.kill()
+      finish(reject, new Error(`claude excedeu o timeout de ${TIMEOUT_MS}ms`))
+    }, TIMEOUT_MS)
+
+    child.stdout.on('data', (chunk) => {
+      stdout += chunk
+    })
+    child.stderr.on('data', (chunk) => {
+      stderr += chunk
+    })
+
+    child.on('error', (err) => {
+      if (err.code === 'ENOENT') finish(reject, new ClaudeNotInstalledError(NOT_INSTALLED_MESSAGE))
+      else finish(reject, new Error(`claude falhou: ${err.message}`))
+    })
+
+    child.on('close', (code) => {
+      if (code !== 0) {
+        // Com shell no Windows, "não instalado" não vira ENOENT — vira o erro do próprio cmd.exe.
+        if (IS_WINDOWS && /não é reconhecido|not recognized|cannot find/i.test(stderr)) {
+          finish(reject, new ClaudeNotInstalledError(NOT_INSTALLED_MESSAGE))
           return
         }
-        resolve(stdout)
-      },
-    )
+        finish(reject, new Error(`claude falhou (código ${code}): ${(stderr || stdout).slice(0, 500)}`))
+        return
+      }
+      finish(resolve, stdout)
+    })
+
+    child.stdin.on('error', () => {}) // EPIPE se o processo morrer antes de ler — o close acima reporta
+    if (stdinInput !== null) child.stdin.write(stdinInput)
+    child.stdin.end()
   })
 }
 
@@ -173,7 +216,6 @@ export async function runChatTurn({ sessionId, visitorText, history }) {
 
     const args = [
       '-p',
-      prompt,
       '--output-format',
       'json',
       '--dangerously-skip-permissions',
@@ -188,7 +230,7 @@ export async function runChatTurn({ sessionId, visitorText, history }) {
       ...(isNewSession ? [] : ['--resume', sessionId]),
     ]
 
-    const envelope = parseEnvelope(await runClaudeProcess(args))
+    const envelope = parseEnvelope(await runClaudeProcess(args, { stdinInput: prompt }))
 
     return {
       reply: String(envelope.result || '').trim(),
@@ -199,15 +241,14 @@ export async function runChatTurn({ sessionId, visitorText, history }) {
 }
 
 /**
- * Chamada avulsa, sem sessão e sem histórico — usada pela extração do orçamento. Fica separada do
- * turno de conversa de propósito: misturar a extração na sessão do atendimento contamina o contexto
- * e o robô começa a falar em JSON com o cliente.
+ * Chamada avulsa genérica, sem sessão e sem histórico. `cwd` decide qual CLAUDE.md o subprocesso
+ * carrega (atendimento do site ou vendedor do WhatsApp); `effort` é opcional porque a extração de
+ * orçamento roda sem ele desde sempre e o comportamento não deve mudar.
  */
-export async function runOneShot(prompt) {
+export async function runPrompt(prompt, { cwd = CONTENT_DIR, effort = null } = {}) {
   return withClaudeGate(async () => {
     const args = [
       '-p',
-      prompt,
       '--output-format',
       'json',
       '--dangerously-skip-permissions',
@@ -215,10 +256,20 @@ export async function runOneShot(prompt) {
       DISALLOWED_TOOLS,
       '--model',
       MODEL,
+      ...(effort ? ['--effort', effort] : []),
       '--fallback-model',
       FALLBACK_MODEL,
     ]
 
-    return String(parseEnvelope(await runClaudeProcess(args)).result || '')
+    return String(parseEnvelope(await runClaudeProcess(args, { cwd, stdinInput: prompt })).result || '')
   })
+}
+
+/**
+ * Chamada avulsa usada pela extração do orçamento. Fica separada do turno de conversa de propósito:
+ * misturar a extração na sessão do atendimento contamina o contexto e o robô começa a falar em JSON
+ * com o cliente.
+ */
+export async function runOneShot(prompt) {
+  return runPrompt(prompt)
 }

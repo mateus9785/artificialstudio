@@ -532,3 +532,43 @@ CREATE TABLE IF NOT EXISTS scout_runs (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_scout_runs_status (status)
 );
+
+-- ==========================================================================
+-- IA vendedora no WhatsApp: sugestoes de resposta geradas pela IA que o admin
+-- aprova/edita/descarta antes de enviar (nunca envio automatico -- numero real
+-- em producao). A tabela whatsapp_ai_suggestions e fila E rascunho ao mesmo
+-- tempo (status pending/running = fila, draft = rascunho aguardando o admin).
+-- Fluxo: pending -> running -> draft -> approved_sent | discarded | superseded
+-- (superseded = chegou mensagem nova ou o admin pediu regeneracao).
+-- ==========================================================================
+
+-- ai_enabled: o numero conectado e pessoal, entao o admin desliga a geracao
+-- de sugestoes nas conversas que nao sao de venda (amigos/familia).
+ALTER TABLE whatsapp_conversations ADD COLUMN ai_enabled BOOLEAN NOT NULL DEFAULT TRUE AFTER status;
+
+-- collected_data: dados do cliente extraidos progressivamente pela IA durante
+-- a conversa (nome, empresa, contato, servico, requisitos, estagio) -- exibidos
+-- no painel lateral da tela WhatsApp, mesmo papel do QuotePanel de ConversasIA.
+ALTER TABLE whatsapp_conversations ADD COLUMN collected_data JSON NULL AFTER ai_enabled;
+
+CREATE TABLE IF NOT EXISTS whatsapp_ai_suggestions (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  conversation_id INT NOT NULL,
+  kind ENUM('reply', 'cold_outreach') NOT NULL DEFAULT 'reply',
+  status ENUM('pending', 'running', 'draft', 'approved_sent', 'discarded', 'superseded', 'error') NOT NULL DEFAULT 'pending',
+  trigger_message_id INT NULL,
+  prospect_id INT NULL,
+  suggested_text TEXT NULL,
+  final_text TEXT NULL,
+  sent_message_id INT NULL,
+  prompt_fingerprint VARCHAR(64) NULL,
+  quote_marker ENUM('none', 'presented', 'confirmed') NOT NULL DEFAULT 'none',
+  attempts TINYINT NOT NULL DEFAULT 0,
+  error TEXT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  started_at TIMESTAMP NULL,
+  finished_at TIMESTAMP NULL,
+  FOREIGN KEY (conversation_id) REFERENCES whatsapp_conversations(id) ON DELETE CASCADE,
+  INDEX idx_wa_suggestions_pending (status, id),
+  INDEX idx_wa_suggestions_conversation (conversation_id, id)
+);
