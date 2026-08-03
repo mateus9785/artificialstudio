@@ -22,6 +22,22 @@ const MESSAGE_STATUS_ICON = {
   failed: AlertTriangle,
 }
 
+function ContactAvatar({ avatarUrl, size = 36, iconSize = 16 }) {
+  const resolvedUrl = resolveMediaUrl(avatarUrl)
+  return (
+    <div
+      className="rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden"
+      style={{ width: size, height: size, background: 'rgba(255,255,255,0.06)' }}
+    >
+      {resolvedUrl ? (
+        <img src={resolvedUrl} alt="" className="w-full h-full object-cover" />
+      ) : (
+        <User size={iconSize} style={{ color: '#a1a1aa' }} />
+      )}
+    </div>
+  )
+}
+
 function ConnectScreen({ connectionStatus, qr, onConnect }) {
   return (
     <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8 text-center">
@@ -185,22 +201,27 @@ export default function WhatsApp() {
                     borderBottom: '1px solid rgba(255,255,255,0.05)',
                   }}
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm font-medium truncate" style={{ color: '#e4e4e7' }}>
-                      {c.displayName || c.phoneNumber || 'Contato'}
-                    </span>
-                    {c.unreadCount > 0 && (
-                      <span
-                        className="text-xs px-1.5 rounded-full flex-shrink-0"
-                        style={{ background: '#22d3ee', color: '#050505' }}
-                      >
-                        {c.unreadCount}
+                  <div className="flex items-center gap-2.5">
+                    <ContactAvatar avatarUrl={c.avatarUrl} />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-medium truncate" style={{ color: '#e4e4e7' }}>
+                          {c.displayName || c.phoneNumber || 'Contato'}
+                        </span>
+                        {c.unreadCount > 0 && (
+                          <span
+                            className="text-xs px-1.5 rounded-full flex-shrink-0"
+                            style={{ background: '#22d3ee', color: '#050505' }}
+                          >
+                            {c.unreadCount}
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-xs truncate block" style={{ color: '#71717a' }}>
+                        {c.lastMessage}
                       </span>
-                    )}
+                    </div>
                   </div>
-                  <span className="text-xs truncate" style={{ color: '#71717a' }}>
-                    {c.lastMessage}
-                  </span>
                 </button>
               ))}
             </div>
@@ -221,7 +242,7 @@ export default function WhatsApp() {
                     className="px-4 py-3 flex items-center gap-3 flex-shrink-0"
                     style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
                   >
-                    <User size={16} style={{ color: '#a1a1aa' }} />
+                    <ContactAvatar avatarUrl={detail.conversation.avatarUrl} />
                     <div className="min-w-0">
                       <p className="text-sm font-medium truncate" style={{ color: '#e4e4e7' }}>
                         {detail.conversation.displayName || detail.conversation.phoneNumber || 'Contato'}

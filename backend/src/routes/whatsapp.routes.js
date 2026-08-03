@@ -50,6 +50,7 @@ whatsappRouter.get(
         c.last_message_preview AS lastMessage, c.last_message_at AS lastMessageAt, c.unread_count AS unreadCount
       FROM whatsapp_conversations c
       JOIN whatsapp_contacts ct ON ct.id = c.contact_id
+      WHERE c.started_by = 'admin'
       ORDER BY c.last_message_at DESC
     `)
     res.json(rows)

@@ -119,9 +119,9 @@ async function upsertConversationForMessage(contact, { sentAt, preview, directio
 
   if (!existing) {
     const [result] = await pool.query(
-      `INSERT INTO whatsapp_conversations (contact_id, last_message_at, last_message_preview, unread_count)
-       VALUES (?, ?, ?, ?)`,
-      [contact.id, sentAt, preview, bumpUnread ? 1 : 0],
+      `INSERT INTO whatsapp_conversations (contact_id, started_by, last_message_at, last_message_preview, unread_count)
+       VALUES (?, ?, ?, ?, ?)`,
+      [contact.id, direction === 'outbound' ? 'admin' : 'contact', sentAt, preview, bumpUnread ? 1 : 0],
     )
     const [rows] = await pool.query('SELECT * FROM whatsapp_conversations WHERE id = ?', [result.insertId])
     return rows[0]
@@ -367,7 +367,7 @@ export async function getOrCreateConversationByPhone(phoneE164, { displayName } 
   if (existingRows[0]) return existingRows[0]
 
   const [result] = await pool.query(
-    'INSERT INTO whatsapp_conversations (contact_id, last_message_at, last_message_preview, unread_count) VALUES (?, NULL, NULL, 0)',
+    "INSERT INTO whatsapp_conversations (contact_id, started_by, last_message_at, last_message_preview, unread_count) VALUES (?, 'admin', NULL, NULL, 0)",
     [contact.id],
   )
   const [rows] = await pool.query('SELECT * FROM whatsapp_conversations WHERE id = ?', [result.insertId])

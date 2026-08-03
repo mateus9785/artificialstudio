@@ -489,6 +489,27 @@ CREATE TABLE IF NOT EXISTS whatsapp_messages (
   INDEX idx_whatsapp_messages_conversation (conversation_id, sent_at)
 );
 
+-- Distingue conversa aberta pelo admin (via painel de leads do pegasus-scout,
+-- getOrCreateConversationByPhone) de conversa aberta por quem escreveu primeiro
+-- (contato/lead). A tela WhatsApp usa isso para listar so as que o admin
+-- iniciou, sem misturar contatos pessoais trazidos pelo sync de historico do
+-- numero escaneado. So e definido na criacao da conversa, nunca muda depois.
+ALTER TABLE whatsapp_conversations ADD COLUMN started_by ENUM('admin', 'contact') NOT NULL DEFAULT 'contact' AFTER contact_id;
+
+-- Backfill das conversas que ja existiam antes da coluna acima: olha a direcao
+-- da primeira mensagem de cada conversa (outbound = admin mandou primeiro).
+-- Conversa sem nenhuma mensagem so existe vinda do fluxo start-conversation,
+-- entao tambem e do admin.
+UPDATE whatsapp_conversations c
+SET c.started_by = 'admin'
+WHERE EXISTS (
+  SELECT 1 FROM whatsapp_messages m
+  WHERE m.conversation_id = c.id
+  AND m.direction = 'outbound'
+  AND m.sent_at = (SELECT MIN(m2.sent_at) FROM whatsapp_messages m2 WHERE m2.conversation_id = c.id)
+)
+OR NOT EXISTS (SELECT 1 FROM whatsapp_messages m3 WHERE m3.conversation_id = c.id);
+
 -- Fila de execucoes do pegasus-scout, pedidas pelo admin em /admin/whatsapp e
 -- processadas por um worker local (mesmo padrao do claude-kanban): o worker
 -- reivindica a linha 'todo' mais antiga via /admin/scout/runs/claim-next e
