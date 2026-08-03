@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Search, Loader2, RotateCw, MessageCircle, Star } from 'lucide-react'
+import { Search, Loader2, RotateCw, MessageCircle, Star, X, ExternalLink } from 'lucide-react'
 import { api } from '../../lib/api'
 import { getAdminToken } from '../../lib/adminAuth'
 import { useAdminGuard } from '../useAdminGuard'
@@ -24,6 +24,13 @@ const VERDICT_LABEL = {
   provavelmente_manual: 'atendimento manual',
   provavelmente_automatizado: 'já automatizado',
   indefinido: 'indefinido',
+}
+
+const PIPELINE_LABEL = {
+  novo: 'Novo',
+  qualificado: 'Qualificado',
+  descartado: 'Descartado',
+  em_atendimento: 'Em atendimento',
 }
 
 const BRAZIL_STATES = [
@@ -107,6 +114,126 @@ function RunStatus({ run, onRetry }) {
   )
 }
 
+function DetailRow({ label, children }) {
+  if (children === null || children === undefined || children === '') return null
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="text-[11px] font-medium" style={{ color: '#71717a' }}>
+        {label}
+      </span>
+      <span className="text-xs" style={{ color: '#e4e4e7' }}>
+        {children}
+      </span>
+    </div>
+  )
+}
+
+function LeadDetailModal({ lead, isConnected, onClose, onStartConversation }) {
+  const phone = lead.whatsappPhoneE164 || lead.phoneE164
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: 'rgba(0,0,0,0.6)' }}
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl p-6 flex flex-col gap-4"
+        style={{ background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.08)' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <h3 className="text-base font-semibold" style={{ color: '#f4f4f5' }}>
+            {lead.name}
+          </h3>
+          <button onClick={onClose} className="cursor-pointer flex-shrink-0" style={{ color: '#71717a' }}>
+            <X size={18} />
+          </button>
+        </div>
+
+        {lead.fitScore !== null && (
+          <span
+            className="self-start flex items-center gap-1 text-xs px-2 py-1 rounded-full"
+            style={{ background: 'rgba(34,211,238,0.12)', color: '#22d3ee' }}
+          >
+            <Star size={11} />
+            Score {lead.fitScore}
+          </span>
+        )}
+
+        <div className="grid grid-cols-2 gap-3">
+          <DetailRow label="Categoria">{lead.category}</DetailRow>
+          <DetailRow label="Cidade/UF">
+            {lead.city || '—'}
+            {lead.state ? `-${lead.state}` : ''}
+          </DetailRow>
+          <DetailRow label="Segmento">{lead.segmento}</DetailRow>
+          <DetailRow label="Porte">{lead.porte}</DetailRow>
+          <DetailRow label="Avaliação">
+            {lead.rating !== null ? `${lead.rating} ★ (${lead.reviewsCount ?? 0} avaliações)` : null}
+          </DetailRow>
+          <DetailRow label="Verdict de automação">{VERDICT_LABEL[lead.automationVerdict] || lead.automationVerdict}</DetailRow>
+          <DetailRow label="Status no pipeline">{PIPELINE_LABEL[lead.pipelineStatus] || lead.pipelineStatus}</DetailRow>
+          <DetailRow label="Widget de chat">{lead.chatWidget}</DetailRow>
+          <DetailRow label="Plataforma de e-commerce">{lead.ecommercePlatform}</DetailRow>
+          <DetailRow label="Telefone">{phone}</DetailRow>
+        </div>
+
+        {lead.resumo && (
+          <div>
+            <span className="text-[11px] font-medium block mb-1" style={{ color: '#71717a' }}>
+              Resumo
+            </span>
+            <p className="text-xs leading-relaxed" style={{ color: '#d4d4d8' }}>
+              {lead.resumo}
+            </p>
+          </div>
+        )}
+
+        {lead.ganchoAbordagem && (
+          <div>
+            <span className="text-[11px] font-medium block mb-1" style={{ color: '#71717a' }}>
+              Gancho de abordagem
+            </span>
+            <p className="text-xs leading-relaxed" style={{ color: '#d4d4d8' }}>
+              {lead.ganchoAbordagem}
+            </p>
+          </div>
+        )}
+
+        <div className="flex flex-wrap items-center gap-3 text-xs" style={{ color: '#22d3ee' }}>
+          {lead.website && (
+            <a href={lead.website} target="_blank" rel="noreferrer" className="flex items-center gap-1 hover:underline">
+              <ExternalLink size={11} /> Site
+            </a>
+          )}
+          {lead.instagramUrl && (
+            <a href={lead.instagramUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1 hover:underline">
+              <ExternalLink size={11} /> Instagram
+            </a>
+          )}
+          {lead.mapsUrl && (
+            <a href={lead.mapsUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1 hover:underline">
+              <ExternalLink size={11} /> Google Maps
+            </a>
+          )}
+        </div>
+
+        <button
+          onClick={() => onStartConversation(lead)}
+          disabled={!isConnected || !phone}
+          title={!isConnected ? 'Conecte o WhatsApp para iniciar conversas' : undefined}
+          className="flex items-center justify-center gap-1.5 text-xs px-3 py-2 rounded-lg cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
+          style={{ background: 'linear-gradient(135deg, #0891b2, #7c3aed)', color: 'white' }}
+        >
+          <MessageCircle size={13} />
+          Iniciar conversa
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function ScoutPanel({ isConnected, onStartConversation }) {
   const { handleError } = useAdminGuard()
   const [form, setForm] = useState(DEFAULT_FORM)
@@ -118,6 +245,7 @@ export default function ScoutPanel({ isConnected, onStartConversation }) {
   const [cities, setCities] = useState([])
   const [citiesLoading, setCitiesLoading] = useState(false)
   const [citiesError, setCitiesError] = useState('')
+  const [selectedLead, setSelectedLead] = useState(null)
   const prevStatusRef = useRef(null)
 
   const loadCities = useCallback((uf) => {
@@ -336,7 +464,8 @@ export default function ScoutPanel({ isConnected, onStartConversation }) {
         {leads.map((lead) => (
           <div
             key={lead.id}
-            className="p-3 rounded-lg flex flex-col gap-1.5"
+            onClick={() => setSelectedLead(lead)}
+            className="p-3 rounded-lg flex flex-col gap-1.5 cursor-pointer"
             style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}
           >
             <div className="flex items-start justify-between gap-2">
@@ -363,7 +492,10 @@ export default function ScoutPanel({ isConnected, onStartConversation }) {
               </p>
             )}
             <button
-              onClick={() => handleStartConversation(lead)}
+              onClick={(e) => {
+                e.stopPropagation()
+                handleStartConversation(lead)
+              }}
               disabled={!isConnected || (!lead.whatsappPhoneE164 && !lead.phoneE164)}
               title={!isConnected ? 'Conecte o WhatsApp para iniciar conversas' : undefined}
               className="self-start flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-lg cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
@@ -375,6 +507,18 @@ export default function ScoutPanel({ isConnected, onStartConversation }) {
           </div>
         ))}
       </div>
+
+      {selectedLead && (
+        <LeadDetailModal
+          lead={selectedLead}
+          isConnected={isConnected}
+          onClose={() => setSelectedLead(null)}
+          onStartConversation={(lead) => {
+            setSelectedLead(null)
+            handleStartConversation(lead)
+          }}
+        />
+      )}
     </div>
   )
 }
