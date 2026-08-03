@@ -6,6 +6,13 @@ import { useAdminGuard } from '../useAdminGuard'
 
 const RUN_POLL_MS = 5000
 
+// Teto baixo de propósito: quanto maior o raio/resultados, mais tiles o
+// pegasus-scout varre no Google Maps num mesmo run — e mais perto de levar
+// CAPTCHA (ver pegasus-scout/README.md, seção "Riscos reais"). Fixo aqui em
+// vez de expor como input pra ninguém "testar um valor mais alto" sem querer.
+const SCOUT_RADIUS_KM = 2
+const SCOUT_MAX_RESULTS = 10
+
 const STATUS_LABEL = {
   todo: 'Na fila',
   doing: 'Rodando…',
@@ -19,7 +26,47 @@ const VERDICT_LABEL = {
   indefinido: 'indefinido',
 }
 
-const DEFAULT_FORM = { niche: '', city: '', state: '', radiusKm: 5, maxResults: 60, withLlm: true }
+const BRAZIL_STATES = [
+  { uf: 'AC', name: 'Acre' },
+  { uf: 'AL', name: 'Alagoas' },
+  { uf: 'AP', name: 'Amapá' },
+  { uf: 'AM', name: 'Amazonas' },
+  { uf: 'BA', name: 'Bahia' },
+  { uf: 'CE', name: 'Ceará' },
+  { uf: 'DF', name: 'Distrito Federal' },
+  { uf: 'ES', name: 'Espírito Santo' },
+  { uf: 'GO', name: 'Goiás' },
+  { uf: 'MA', name: 'Maranhão' },
+  { uf: 'MT', name: 'Mato Grosso' },
+  { uf: 'MS', name: 'Mato Grosso do Sul' },
+  { uf: 'MG', name: 'Minas Gerais' },
+  { uf: 'PA', name: 'Pará' },
+  { uf: 'PB', name: 'Paraíba' },
+  { uf: 'PR', name: 'Paraná' },
+  { uf: 'PE', name: 'Pernambuco' },
+  { uf: 'PI', name: 'Piauí' },
+  { uf: 'RJ', name: 'Rio de Janeiro' },
+  { uf: 'RN', name: 'Rio Grande do Norte' },
+  { uf: 'RS', name: 'Rio Grande do Sul' },
+  { uf: 'RO', name: 'Rondônia' },
+  { uf: 'RR', name: 'Roraima' },
+  { uf: 'SC', name: 'Santa Catarina' },
+  { uf: 'SP', name: 'São Paulo' },
+  { uf: 'SE', name: 'Sergipe' },
+  { uf: 'TO', name: 'Tocantins' },
+]
+
+const selectStyle = {
+  background: 'rgba(255,255,255,0.04)',
+  border: '1px solid rgba(255,255,255,0.08)',
+  color: '#e4e4e7',
+  colorScheme: 'dark',
+  cursor: 'pointer',
+}
+
+const optionStyle = { background: '#0a0a0a', color: '#e4e4e7' }
+
+const DEFAULT_FORM = { niche: '', city: '', state: '', withLlm: true }
 
 function RunStatus({ run, onRetry }) {
   if (!run) return null
@@ -68,7 +115,32 @@ export default function ScoutPanel({ isConnected, onStartConversation }) {
   const [latestRun, setLatestRun] = useState(null)
   const [leads, setLeads] = useState([])
   const [leadsLoading, setLeadsLoading] = useState(true)
+  const [cities, setCities] = useState([])
+  const [citiesLoading, setCitiesLoading] = useState(false)
+  const [citiesError, setCitiesError] = useState('')
   const prevStatusRef = useRef(null)
+
+  const loadCities = useCallback((uf) => {
+    if (!uf) {
+      setCities([])
+      return
+    }
+    setCitiesLoading(true)
+    setCitiesError('')
+    fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf}/municipios?orderBy=nome`)
+      .then((res) => {
+        if (!res.ok) throw new Error('Falha ao carregar cidades.')
+        return res.json()
+      })
+      .then((rows) => setCities(rows.map((row) => row.nome)))
+      .catch(() => setCitiesError('Não foi possível carregar as cidades. Tente de novo.'))
+      .finally(() => setCitiesLoading(false))
+  }, [])
+
+  useEffect(() => {
+    loadCities(form.state)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.state])
 
   const loadLeads = useCallback(() => {
     api
@@ -108,8 +180,8 @@ export default function ScoutPanel({ isConnected, onStartConversation }) {
   async function handleSubmit(e) {
     e.preventDefault()
     setFormError('')
-    if (!form.niche.trim() || !form.city.trim()) {
-      setFormError('Informe nicho e cidade.')
+    if (!form.niche.trim() || !form.state || !form.city) {
+      setFormError('Informe nicho, UF e cidade.')
       return
     }
     setSubmitting(true)
@@ -118,10 +190,10 @@ export default function ScoutPanel({ isConnected, onStartConversation }) {
         '/admin/scout/runs',
         {
           niche: form.niche.trim(),
-          city: form.city.trim(),
-          state: form.state.trim() || undefined,
-          radiusKm: Number(form.radiusKm),
-          maxResults: Number(form.maxResults),
+          city: form.city,
+          state: form.state,
+          radiusKm: SCOUT_RADIUS_KM,
+          maxResults: SCOUT_MAX_RESULTS,
           withLlm: form.withLlm,
         },
         getAdminToken(),
@@ -179,44 +251,49 @@ export default function ScoutPanel({ isConnected, onStartConversation }) {
             style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#e4e4e7' }}
           />
           <div className="flex gap-2">
-            <input
+            <select
+              value={form.state}
+              onChange={(e) => setForm((f) => ({ ...f, state: e.target.value, city: '' }))}
+              className="w-32 px-3 py-2 rounded-lg text-xs outline-none"
+              style={selectStyle}
+            >
+              <option value="" style={optionStyle}>UF</option>
+              {BRAZIL_STATES.map((s) => (
+                <option key={s.uf} value={s.uf} style={optionStyle}>
+                  {s.uf} — {s.name}
+                </option>
+              ))}
+            </select>
+            <select
               value={form.city}
               onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))}
-              placeholder="Cidade"
-              className="flex-1 min-w-0 px-3 py-2 rounded-lg text-xs outline-none"
-              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#e4e4e7' }}
-            />
-            <input
-              value={form.state}
-              onChange={(e) => setForm((f) => ({ ...f, state: e.target.value.slice(0, 2).toUpperCase() }))}
-              placeholder="UF"
-              className="w-14 px-3 py-2 rounded-lg text-xs outline-none"
-              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#e4e4e7' }}
-            />
+              disabled={!form.state || citiesLoading}
+              className="flex-1 min-w-0 px-3 py-2 rounded-lg text-xs outline-none disabled:cursor-not-allowed disabled:opacity-50"
+              style={selectStyle}
+            >
+              <option value="" style={optionStyle}>
+                {!form.state ? 'Escolha a UF primeiro' : citiesLoading ? 'Carregando…' : 'Cidade'}
+              </option>
+              {cities.map((city) => (
+                <option key={city} value={city} style={optionStyle}>
+                  {city}
+                </option>
+              ))}
+            </select>
           </div>
-          <div className="flex gap-2">
-            <input
-              type="number"
-              min="0.2"
-              max="100"
-              step="0.5"
-              value={form.radiusKm}
-              onChange={(e) => setForm((f) => ({ ...f, radiusKm: e.target.value }))}
-              placeholder="Raio (km)"
-              className="flex-1 min-w-0 px-3 py-2 rounded-lg text-xs outline-none"
-              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#e4e4e7' }}
-            />
-            <input
-              type="number"
-              min="1"
-              max="5000"
-              value={form.maxResults}
-              onChange={(e) => setForm((f) => ({ ...f, maxResults: e.target.value }))}
-              placeholder="Máximo"
-              className="flex-1 min-w-0 px-3 py-2 rounded-lg text-xs outline-none"
-              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#e4e4e7' }}
-            />
-          </div>
+          {citiesError && (
+            <div className="flex items-center justify-between gap-2 text-xs" style={{ color: '#f87171' }}>
+              <span>{citiesError}</span>
+              <button
+                type="button"
+                onClick={() => loadCities(form.state)}
+                className="px-2 py-1 rounded-lg cursor-pointer flex-shrink-0"
+                style={{ background: 'rgba(255,255,255,0.06)', color: '#e4e4e7' }}
+              >
+                Tentar de novo
+              </button>
+            </div>
+          )}
           <label className="flex items-center gap-2 text-xs cursor-pointer" style={{ color: '#a1a1aa' }}>
             <input
               type="checkbox"
