@@ -53,6 +53,21 @@ function jidToPhoneNumber(jid) {
   return jid.split('@')[0].split(':')[0]
 }
 
+/** Portão de ingestão: só guarda mensagem de numero que e lead do pegasus-scout
+ * (scout_prospects.whatsapp_phone_e164/phone_e164). Sem isso, syncFullHistory
+ * traria de volta todo o historico pessoal do numero escaneado, contato a
+ * contato, do jeito que a limpeza manual em produção removeu. */
+async function isKnownLeadPhone(phoneDigits) {
+  if (!phoneDigits) return false
+  const [rows] = await pool.query(
+    `SELECT 1 FROM scout_prospects
+     WHERE REGEXP_REPLACE(COALESCE(whatsapp_phone_e164, phone_e164), '[^0-9]', '') = ?
+     LIMIT 1`,
+    [phoneDigits],
+  )
+  return rows.length > 0
+}
+
 function extractText(msg) {
   const m = msg.message
   if (!m) return undefined
@@ -202,6 +217,9 @@ async function ingestOne(msg, { isHistory = false } = {}) {
   if (remoteJid.endsWith('@g.us') || remoteJid === 'status@broadcast') return // grupos/status: fora de escopo
   if (!msg.message || msg.message.protocolMessage) return
 
+  const phoneNumber = remoteJid.endsWith('@s.whatsapp.net') ? jidToPhoneNumber(remoteJid) : undefined
+  if (!(await isKnownLeadPhone(phoneNumber))) return // numero nao e lead do pegasus-scout: nao ingere
+
   const mediaKey = MEDIA_MESSAGE_TYPES.find((key) => msg.message?.[key])
   const attachment = mediaKey ? await saveMediaAttachment(msg, mediaKey) : null
   const text = extractText(msg)
@@ -214,7 +232,7 @@ async function ingestOne(msg, { isHistory = false } = {}) {
     jid: remoteJid,
     displayName: fromMe ? null : msg.pushName || null,
     avatarUrl: await getContactAvatarUrl(remoteJid),
-    phoneNumber: remoteJid.endsWith('@s.whatsapp.net') ? jidToPhoneNumber(remoteJid) : null,
+    phoneNumber: phoneNumber ?? null,
   })
 
   const preview = text ? text.slice(0, 150) : attachment ? `[${attachment.type}]` : ''
