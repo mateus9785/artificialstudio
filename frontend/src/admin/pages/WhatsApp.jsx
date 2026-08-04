@@ -628,6 +628,20 @@ export default function WhatsApp() {
                       <RefreshCw size={13} className={historySyncing ? 'animate-spin' : ''} />
                     </button>
                     <button
+                      onClick={regenerateSuggestion}
+                      disabled={suggestionBusy}
+                      title="Gerar nova sugestão da IA"
+                      aria-label="Gerar nova sugestão da IA"
+                      className="flex items-center justify-center w-8 h-8 rounded-lg cursor-pointer flex-shrink-0 disabled:opacity-50"
+                      style={{
+                        background: 'rgba(255,255,255,0.05)',
+                        color: '#a1a1aa',
+                        border: '1px solid rgba(255,255,255,0.08)',
+                      }}
+                    >
+                      <Sparkles size={13} className={suggestionBusy ? 'animate-pulse' : ''} />
+                    </button>
+                    <button
                       onClick={toggleAi}
                       title={aiEnabled ? 'IA ligada nesta conversa — clique para desligar' : 'IA desligada nesta conversa — clique para ligar'}
                       className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg cursor-pointer flex-shrink-0"
@@ -638,7 +652,7 @@ export default function WhatsApp() {
                       }}
                     >
                       <Bot size={13} />
-                      {aiEnabled ? 'IA on' : 'IA off'}
+                      IA
                     </button>
                   </div>
 
