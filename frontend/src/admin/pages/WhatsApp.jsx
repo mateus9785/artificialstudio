@@ -305,6 +305,16 @@ export default function WhatsApp() {
   // 'dados' (dados do contato/lead) ou 'scout' (Prospecção).
   const [openPanel, setOpenPanel] = useState('scout')
   const messagesEndRef = useRef(null)
+  const replyTextareaRef = useRef(null)
+
+  // O crescimento do textarea é feito imperativamente (style.height) no onChange
+  // pra acompanhar o texto digitado; quando o campo é limpo por fora (enviou,
+  // cancelou edição) o style não reage sozinho a isso, então reseta aqui.
+  useEffect(() => {
+    if (replyTextareaRef.current && !reply) {
+      replyTextareaRef.current.style.height = 'auto'
+    }
+  }, [reply])
 
   const loadStatus = useCallback(() => {
     api
@@ -485,15 +495,8 @@ export default function WhatsApp() {
   const historySyncing = triggeringSync || Boolean(detail?.conversation?.historySyncing)
 
   return (
-    <div>
-      <h1 className="text-xl font-semibold mb-1" style={{ color: '#f4f4f5' }}>
-        WhatsApp
-      </h1>
-      <p className="text-sm mb-6" style={{ color: '#71717a' }}>
-        Conversas do número conectado via WhatsApp Web. A IA sugere respostas — você aprova antes de enviar.
-      </p>
-
-      <div className="flex flex-col xl:grid xl:grid-cols-[260px_1fr_320px] gap-4 xl:h-[72vh]">
+    <div className="h-full flex flex-col">
+      <div className="flex flex-col xl:grid xl:grid-cols-[260px_1fr_320px] gap-4 flex-1 xl:min-h-0">
         <div
           className="flex flex-col xl:grid xl:grid-cols-[260px_1fr] xl:col-span-2 gap-4 xl:h-full rounded-xl overflow-hidden"
           style={!isConnected ? { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' } : undefined}
@@ -717,14 +720,30 @@ export default function WhatsApp() {
 
                   <form
                     onSubmit={sendReply}
-                    className="p-3 flex gap-2 flex-shrink-0"
+                    className="p-3 flex gap-2 items-end flex-shrink-0"
                     style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
                   >
-                    <input
+                    <textarea
+                      ref={replyTextareaRef}
                       value={reply}
-                      onChange={(e) => setReply(e.target.value)}
-                      placeholder={editingSuggestionId ? 'Editando sugestão da IA — Enter envia a versão editada' : 'Responder...'}
-                      className="flex-1 min-w-0 px-3.5 py-2.5 rounded-xl text-sm outline-none"
+                      onChange={(e) => {
+                        setReply(e.target.value)
+                        e.target.style.height = 'auto'
+                        e.target.style.height = `${e.target.scrollHeight}px`
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault()
+                          sendReply(e)
+                        }
+                      }}
+                      placeholder={
+                        editingSuggestionId
+                          ? 'Editando sugestão da IA — Enter envia a versão editada'
+                          : 'Responder... (Shift+Enter quebra linha)'
+                      }
+                      rows={1}
+                      className="flex-1 min-w-0 px-3.5 py-2.5 rounded-xl text-sm outline-none resize-none max-h-40 overflow-y-auto"
                       style={{
                         background: 'rgba(255,255,255,0.04)',
                         border: editingSuggestionId ? '1px solid rgba(34,211,238,0.35)' : '1px solid rgba(255,255,255,0.08)',
