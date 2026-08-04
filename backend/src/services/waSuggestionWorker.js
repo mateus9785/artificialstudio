@@ -76,6 +76,10 @@ async function loadLeadByPhone(phoneDigits) {
   const [rows] = await pool.query(
     `SELECT p.id, p.name, p.category, p.city, p.state, p.website, p.rating,
        p.reviews_count AS reviewsCount, p.fit_score AS fitScore,
+       p.automation_verdict AS automationVerdict,
+       (SELECT s.signal_value FROM scout_prospect_signals s
+          WHERE s.prospect_id = p.id AND s.signal_key = 'site_fora_do_ar'
+          ORDER BY s.id DESC LIMIT 1) AS siteForaDoAr,
        b.segmento, b.porte, b.resumo, b.gancho_abordagem AS ganchoAbordagem, b.dores_json AS dores
      FROM scout_prospects p
      LEFT JOIN scout_prospect_briefs b ON b.prospect_id = p.id

@@ -174,6 +174,8 @@ function SuggestionPanel({ suggestion, busy, onApprove, onEdit, onRegenerate, on
 }
 
 const ESTAGIO_LABEL = {
+  sondagem: 'Sondagem',
+  revelacao: 'Revelação',
   abertura: 'Abertura',
   descoberta: 'Descoberta',
   proposta: 'Proposta',

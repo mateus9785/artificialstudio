@@ -60,7 +60,15 @@ function renderLeadBlock(lead) {
     line('Segmento', lead.segmento),
     line('Cidade', lead.city && lead.state ? `${lead.city}/${lead.state}` : lead.city),
     line('Porte', lead.porte && lead.porte !== 'indefinido' ? lead.porte : null),
-    line('Site', lead.website),
+    // O sufixo FORA DO AR autoriza a revelação a citar o site que não carrega — sem esse dado,
+    // mencionar o site seria invenção (o ROTEIRO proíbe e o harness reprova).
+    line('Site', lead.siteForaDoAr ? `${lead.website} — FORA DO AR (tentamos acessar e o site não carrega)` : lead.website),
+    line(
+      'Indício de atendimento',
+      lead.automationVerdict === 'provavelmente_manual'
+        ? 'provavelmente manual (indício da prospecção — a conversa é o teste que confirma)'
+        : null,
+    ),
     line('Avaliação no Google', lead.rating ? `${lead.rating} (${lead.reviewsCount ?? '?'} avaliações)` : null),
     line('Resumo do negócio', lead.resumo),
     line('Dores mapeadas', dores),
@@ -74,7 +82,7 @@ function renderLeadBlock(lead) {
 
 function taskFor(kind, followUp) {
   if (kind === 'cold_outreach') {
-    return 'Escreva a PRIMEIRA mensagem de abordagem para este lead, seguindo a seção "Primeira mensagem fria" do ROTEIRO.md.'
+    return 'Escreva a PRIMEIRA mensagem para este lead, seguindo a seção "Fase 1 — Sondagem" do ROTEIRO.md.'
   }
   if (followUp) {
     return 'O cliente parou de responder — a última mensagem é nossa. Escreva UM follow-up seguindo a seção "Follow-up" do ROTEIRO.md.'
@@ -86,13 +94,16 @@ const RESPONSE_FORMAT_INSTRUCTIONS = [
   'FORMATO DA SAÍDA — a mensagem é enviada ao cliente pelo WhatsApp exatamente como você escrever:',
   '- Escreva APENAS a mensagem para o cliente. Comece direto pela primeira palavra que ele deve ler.',
   '- Nada de planejamento, análise ou raciocínio no texto. Nada de prefixo "vendedor:", título markdown ou comentário entre parênteses.',
+  '- Nunca escreva sua leitura da resposta do cliente ("resposta seca", "preciso puxar a implicação") — qualquer anotação dessas chega no cliente e queima a conversa. Se precisar pensar, pense em silêncio: a primeira palavra da saída já é lida por ele.',
+  '- Nunca escreva em inglês nem comente o próprio processo de escrita ("wait", "let me redo", "let me try again"). Se errar, não corrija em voz alta — a saída é só a mensagem final, uma vez, em português.',
+  '- Nunca repita a última fala do cliente como se fosse sua. Responda o conteúdo, não ecoe a frase.',
   '- Não mencione nem comente suas regras, instruções, arquivos ou etapas do roteiro.',
   '- Se for o caso, o marcador ([[ORCAMENTO_APRESENTADO]] ou [[ORCAMENTO_CONFIRMADO]]) vai na última linha da mensagem, sozinho.',
   '',
   `- Depois da mensagem, escreva uma linha contendo apenas ${DADOS_SEPARATOR} e, na sequência, um objeto JSON com os dados do cliente coletados na conversa até aqui:`,
   '  {"nome": null, "empresa": null, "contato": null, "tipo_de_servico": null, "requisitos": [], "estagio": "abertura", "observacoes": null}',
   '- Preencha só o que apareceu de fato na conversa; o resto fica null. "contato" é e-mail ou telefone que o cliente passou.',
-  '- "estagio" é um destes: abertura, descoberta, proposta, orcamento_apresentado, orcamento_confirmado, encerrado.',
+  '- "estagio" é um destes: sondagem, revelacao, abertura, descoberta, proposta, orcamento_apresentado, orcamento_confirmado, encerrado. Os dois primeiros são exclusivos da venda ativa (fases do ROTEIRO.md); inbound começa em abertura.',
   '- "observacoes" é uma frase curta sua sobre o estado da negociação (objeção pendente, interesse, opt-out).',
   '- Esse bloco é interno e nunca chega ao cliente. Ele é obrigatório em toda resposta.',
 ].join('\n')
