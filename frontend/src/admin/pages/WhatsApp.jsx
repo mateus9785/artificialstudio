@@ -292,6 +292,7 @@ export default function WhatsApp() {
   const [detail, setDetail] = useState(null)
   const [reply, setReply] = useState('')
   const [sending, setSending] = useState(false)
+  const [refreshingDetail, setRefreshingDetail] = useState(false)
   const [suggestionBusy, setSuggestionBusy] = useState(false)
   // Sugestão que o admin mandou para o input via "Editar": o envio do form passa
   // pela rota de aprovação (grava final_text) em vez do envio comum.
@@ -459,6 +460,23 @@ export default function WhatsApp() {
     }
   }
 
+  // Botão manual de atualizar: o polling de 3s já busca mensagens novas sozinho,
+  // mas em falhas (aba em segundo plano, engasgo pontual) o admin pode forçar
+  // a busca sem esperar o próximo ciclo.
+  async function refreshMessages() {
+    if (!selectedId || refreshingDetail) return
+    setRefreshingDetail(true)
+    try {
+      const data = await api.get(`/admin/whatsapp/conversations/${selectedId}`, getAdminToken())
+      setDetail(data)
+      loadConversations()
+    } catch (err) {
+      handleError(err)
+    } finally {
+      setRefreshingDetail(false)
+    }
+  }
+
   const aiEnabled = detail?.conversation?.aiEnabled
 
   return (
@@ -577,6 +595,20 @@ export default function WhatsApp() {
                         </p>
                       )}
                     </div>
+                    <button
+                      onClick={refreshMessages}
+                      disabled={refreshingDetail}
+                      title="Buscar mensagens novas agora"
+                      aria-label="Atualizar mensagens"
+                      className="flex items-center justify-center w-8 h-8 rounded-lg cursor-pointer flex-shrink-0 disabled:opacity-50"
+                      style={{
+                        background: 'rgba(255,255,255,0.05)',
+                        color: '#a1a1aa',
+                        border: '1px solid rgba(255,255,255,0.08)',
+                      }}
+                    >
+                      <RefreshCw size={13} className={refreshingDetail ? 'animate-spin' : ''} />
+                    </button>
                     <button
                       onClick={toggleAi}
                       title={aiEnabled ? 'IA ligada nesta conversa — clique para desligar' : 'IA desligada nesta conversa — clique para ligar'}
