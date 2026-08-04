@@ -176,8 +176,8 @@ whatsappRouter.get(
     }
 
     const [messages] = await pool.query(
-      `SELECT id, direction, status, text, attachment_type AS attachmentType, attachment_url AS attachmentUrl,
-         attachment_mime AS attachmentMime, sent_at AS sentAt
+      `SELECT id, direction, status, text, is_manual AS isManual, attachment_type AS attachmentType,
+         attachment_url AS attachmentUrl, attachment_mime AS attachmentMime, sent_at AS sentAt
        FROM whatsapp_messages
        WHERE conversation_id = ? AND deleted_at IS NULL
        ORDER BY sent_at ASC`,
@@ -204,6 +204,53 @@ whatsappRouter.get(
     await pool.query('UPDATE whatsapp_conversations SET unread_count = 0 WHERE id = ?', [id])
 
     res.json({ conversation, messages, lead, suggestion })
+  }),
+)
+
+// Registra uma mensagem que existiu de verdade no WhatsApp mas o Baileys não
+// capturou sozinho (ex: falha de sessão/criptografia) — o admin viu ela no
+// próprio WhatsApp e digita aqui. Só grava no histórico, não envia nada.
+whatsappRouter.post(
+  '/admin/whatsapp/conversations/:id/messages/manual',
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const { id } = req.params
+    const { text, direction, sentAt } = req.body || {}
+    const trimmed = text?.trim()
+    if (!trimmed) return res.status(400).json({ error: 'mensagem vazia' })
+    if (direction !== 'inbound' && direction !== 'outbound') {
+      return res.status(400).json({ error: 'direção inválida' })
+    }
+
+    const [convRows] = await pool.query('SELECT id, last_message_at AS lastMessageAt FROM whatsapp_conversations WHERE id = ?', [id])
+    if (!convRows[0]) return res.status(404).json({ error: 'conversa não encontrada' })
+
+    const parsedSentAt = sentAt ? new Date(sentAt) : new Date()
+    if (Number.isNaN(parsedSentAt.getTime())) {
+      return res.status(400).json({ error: 'data inválida' })
+    }
+
+    const [inserted] = await pool.query(
+      `INSERT INTO whatsapp_messages (conversation_id, direction, status, text, is_manual, sent_at)
+       VALUES (?, ?, ?, ?, TRUE, ?)`,
+      [id, direction, direction === 'inbound' ? 'delivered' : 'sent', trimmed, parsedSentAt],
+    )
+
+    const isNewest = !convRows[0].lastMessageAt || parsedSentAt > convRows[0].lastMessageAt
+    if (isNewest) {
+      await pool.query('UPDATE whatsapp_conversations SET last_message_at = ?, last_message_preview = ? WHERE id = ?', [
+        parsedSentAt,
+        trimmed.slice(0, 150),
+        id,
+      ])
+    }
+
+    const [rows] = await pool.query(
+      `SELECT id, direction, status, text, is_manual AS isManual, sent_at AS sentAt
+       FROM whatsapp_messages WHERE id = ?`,
+      [inserted.insertId],
+    )
+    res.status(201).json(rows[0])
   }),
 )
 

@@ -17,11 +17,14 @@ import {
   ChevronDown,
   ChevronUp,
   ClipboardList,
+  MessageSquarePlus,
+  PenLine,
 } from 'lucide-react'
 import { api, API_URL } from '../../lib/api'
 import { getAdminToken } from '../../lib/adminAuth'
 import { useAdminGuard } from '../useAdminGuard'
 import ScoutPanel from '../components/ScoutPanel'
+import AddManualMessageModal from '../components/AddManualMessageModal'
 
 const STATUS_POLL_MS = 3000
 const CONVERSATIONS_POLL_MS = 5000
@@ -293,6 +296,7 @@ export default function WhatsApp() {
   const [reply, setReply] = useState('')
   const [sending, setSending] = useState(false)
   const [triggeringSync, setTriggeringSync] = useState(false)
+  const [showManualMessageModal, setShowManualMessageModal] = useState(false)
   const [suggestionBusy, setSuggestionBusy] = useState(false)
   // Sugestão que o admin mandou para o input via "Editar": o envio do form passa
   // pela rota de aprovação (grava final_text) em vez do envio comum.
@@ -597,6 +601,19 @@ export default function WhatsApp() {
                       )}
                     </div>
                     <button
+                      onClick={() => setShowManualMessageModal(true)}
+                      title="Adicionar mensagem manualmente"
+                      aria-label="Adicionar mensagem manualmente"
+                      className="flex items-center justify-center w-8 h-8 rounded-lg cursor-pointer flex-shrink-0"
+                      style={{
+                        background: 'rgba(255,255,255,0.05)',
+                        color: '#a1a1aa',
+                        border: '1px solid rgba(255,255,255,0.08)',
+                      }}
+                    >
+                      <MessageSquarePlus size={13} />
+                    </button>
+                    <button
                       onClick={syncHistory}
                       disabled={historySyncing}
                       title={historySyncing ? 'Buscando histórico completo no WhatsApp...' : 'Buscar histórico completo dessa conversa no WhatsApp'}
@@ -653,9 +670,18 @@ export default function WhatsApp() {
                             )}
                             {msg.text}
                           </div>
-                          {isMe && StatusIcon && (
-                            <div className="flex items-center gap-1 self-end px-1" style={{ color: '#52525b' }}>
-                              <StatusIcon size={11} />
+                          {((isMe && StatusIcon) || msg.isManual) && (
+                            <div
+                              className={`flex items-center gap-1 px-1 ${isMe ? 'self-end' : 'self-start'}`}
+                              style={{ color: '#52525b' }}
+                            >
+                              {isMe && StatusIcon && <StatusIcon size={11} />}
+                              {msg.isManual && (
+                                <span className="flex items-center gap-0.5 text-[10px]" title="Adicionada manualmente pelo admin">
+                                  <PenLine size={10} />
+                                  manual
+                                </span>
+                              )}
                             </div>
                           )}
                         </div>
@@ -742,6 +768,17 @@ export default function WhatsApp() {
           />
         </div>
       </div>
+
+      {showManualMessageModal && selectedId && (
+        <AddManualMessageModal
+          conversationId={selectedId}
+          onClose={() => setShowManualMessageModal(false)}
+          onAdded={() => {
+            loadDetail(selectedId)
+            loadConversations()
+          }}
+        />
+      )}
     </div>
   )
 }

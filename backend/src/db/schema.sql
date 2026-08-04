@@ -572,3 +572,9 @@ CREATE TABLE IF NOT EXISTS whatsapp_ai_suggestions (
   INDEX idx_wa_suggestions_pending (status, id),
   INDEX idx_wa_suggestions_conversation (conversation_id, id)
 );
+
+-- Mensagem que existiu de verdade no WhatsApp mas o Baileys nao conseguiu
+-- ingerir sozinho (ex: falha de sessao/criptografia) -- o admin registra na mao
+-- pra manter o historico e o contexto da IA completos. Sem external_message_id
+-- porque nao veio de um evento do socket.
+ALTER TABLE whatsapp_messages ADD COLUMN is_manual BOOLEAN NOT NULL DEFAULT FALSE AFTER direction;
