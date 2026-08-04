@@ -1,7 +1,14 @@
 import { Router } from 'express'
 import { pool } from '../db/pool.js'
 import { requireAdmin } from '../middleware/requireAdmin.js'
-import { connectWhatsApp, disconnectWhatsApp, sendWhatsAppMessage, deleteWhatsAppMessage } from '../services/whatsappClient.js'
+import {
+  connectWhatsApp,
+  disconnectWhatsApp,
+  sendWhatsAppMessage,
+  deleteWhatsAppMessage,
+  backfillConversationHistory,
+  isBackfillRunning,
+} from '../services/whatsappClient.js'
 import { enqueueSuggestion, materializeWhatsAppQuote } from '../services/waSuggestionWorker.js'
 
 export const whatsappRouter = Router()
@@ -165,6 +172,7 @@ whatsappRouter.get(
       ...convRows[0],
       aiEnabled: Boolean(convRows[0].aiEnabled),
       collectedData: parseJsonColumn(convRows[0].collectedData),
+      historySyncing: isBackfillRunning(convRows[0].jid),
     }
 
     const [messages] = await pool.query(
@@ -196,6 +204,30 @@ whatsappRouter.get(
     await pool.query('UPDATE whatsapp_conversations SET unread_count = 0 WHERE id = ?', [id])
 
     res.json({ conversation, messages, lead, suggestion })
+  }),
+)
+
+// Pede o histórico antigo dessa conversa pro WhatsApp (on-demand history sync do
+// Baileys) — roda em segundo plano, o admin acompanha pelo historySyncing que volta
+// no GET /conversations/:id enquanto o backfill ainda está buscando lotes.
+whatsappRouter.post(
+  '/admin/whatsapp/conversations/:id/sync-history',
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const { id } = req.params
+    const [convRows] = await pool.query(
+      `SELECT ct.external_jid AS jid
+       FROM whatsapp_conversations c
+       JOIN whatsapp_contacts ct ON ct.id = c.contact_id
+       WHERE c.id = ?`,
+      [id],
+    )
+    if (!convRows[0]) return res.status(404).json({ error: 'conversa não encontrada' })
+
+    backfillConversationHistory(convRows[0].jid).catch((err) => {
+      console.error(`[whatsapp] falha ao buscar historico da conversa ${id}:`, err)
+    })
+    res.status(202).json({ ok: true })
   }),
 )
 

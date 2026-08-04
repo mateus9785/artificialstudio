@@ -23,6 +23,17 @@ const logger = pino({ level: 'warn' })
 const MAX_RECONNECT_DELAY_MS = 30_000
 const MEDIA_MESSAGE_TYPES = ['imageMessage', 'videoMessage', 'audioMessage', 'documentMessage', 'stickerMessage']
 
+// Backfill de historico sob demanda (botao "buscar historico completo" do painel).
+const BACKFILL_BATCH_SIZE = 50
+const BACKFILL_MAX_BATCHES = 20
+const BACKFILL_POLL_INTERVAL_MS = 1000
+const BACKFILL_POLL_TIMEOUT_MS = 20_000
+const backfillingJids = new Set()
+
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
 /**
  * Porta simplificada de ominichain/backend/src/adapters/whatsapp/WhatsAppAdapter.ts:
  * mesma lib (Baileys), mesma ideia de sessão persistida em disco via
@@ -282,6 +293,70 @@ async function handleHistorySync({ messages }) {
     } catch (err) {
       logger.error({ err, messageId: msg.key.id }, 'failed to ingest whatsapp history message')
     }
+  }
+}
+
+async function getOldestMessageAnchor(jid) {
+  const [rows] = await pool.query(
+    `SELECT m.external_message_id AS id, m.direction, m.sent_at AS sentAt
+     FROM whatsapp_messages m
+     JOIN whatsapp_conversations c ON c.id = m.conversation_id
+     JOIN whatsapp_contacts ct ON ct.id = c.contact_id
+     WHERE ct.external_jid = ? AND m.external_message_id IS NOT NULL
+     ORDER BY m.sent_at ASC
+     LIMIT 1`,
+    [jid],
+  )
+  return rows[0] || null
+}
+
+export function isBackfillRunning(jid) {
+  return backfillingJids.has(jid)
+}
+
+/**
+ * Pede ao WhatsApp o histórico mais antigo de uma conversa via on-demand history
+ * sync do Baileys — mesmo mecanismo do scroll infinito do WhatsApp Web. As
+ * mensagens que chegarem são ingeridas pelo listener global de
+ * messaging-history.set (handleHistorySync, já registrado em startSocket); esta
+ * função só dispara os pedidos e observa a tabela pra saber quando parar. Repete
+ * puxando cada vez mais pra trás até a mensagem mais antiga parar de mudar (sinal
+ * de que acabou o histórico do lado do WhatsApp) ou bater o limite de tentativas.
+ */
+export async function backfillConversationHistory(jid) {
+  if (!socket || status !== 'connected') {
+    throw new Error('WhatsApp não está conectado')
+  }
+  if (backfillingJids.has(jid)) return { fetchedBatches: 0, alreadyRunning: true }
+
+  backfillingJids.add(jid)
+  try {
+    let anchor = await getOldestMessageAnchor(jid)
+    if (!anchor) return { fetchedBatches: 0 } // sem mensagem nenhuma ainda: sem âncora pra pedir histórico anterior
+
+    let fetchedBatches = 0
+    for (let i = 0; i < BACKFILL_MAX_BATCHES; i++) {
+      await socket.fetchMessageHistory(
+        BACKFILL_BATCH_SIZE,
+        { remoteJid: jid, fromMe: anchor.direction === 'outbound', id: anchor.id },
+        anchor.sentAt.getTime(),
+      )
+
+      const deadline = Date.now() + BACKFILL_POLL_TIMEOUT_MS
+      let next = anchor
+      while (Date.now() < deadline) {
+        await delay(BACKFILL_POLL_INTERVAL_MS)
+        next = await getOldestMessageAnchor(jid)
+        if (next && next.id !== anchor.id) break
+      }
+
+      if (!next || next.id === anchor.id) break // nada novo chegou: acabou o histórico (ou o pedido falhou)
+      anchor = next
+      fetchedBatches += 1
+    }
+    return { fetchedBatches }
+  } finally {
+    backfillingJids.delete(jid)
   }
 }
 

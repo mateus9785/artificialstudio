@@ -292,7 +292,7 @@ export default function WhatsApp() {
   const [detail, setDetail] = useState(null)
   const [reply, setReply] = useState('')
   const [sending, setSending] = useState(false)
-  const [refreshingDetail, setRefreshingDetail] = useState(false)
+  const [triggeringSync, setTriggeringSync] = useState(false)
   const [suggestionBusy, setSuggestionBusy] = useState(false)
   // Sugestão que o admin mandou para o input via "Editar": o envio do form passa
   // pela rota de aprovação (grava final_text) em vez do envio comum.
@@ -460,24 +460,25 @@ export default function WhatsApp() {
     }
   }
 
-  // Botão manual de atualizar: o polling de 3s já busca mensagens novas sozinho,
-  // mas em falhas (aba em segundo plano, engasgo pontual) o admin pode forçar
-  // a busca sem esperar o próximo ciclo.
-  async function refreshMessages() {
-    if (!selectedId || refreshingDetail) return
-    setRefreshingDetail(true)
+  // Botão de buscar histórico: dispara o backfill sob demanda no WhatsApp (não é
+  // só reler o banco — o polling de 3s já faz isso sozinho). O backend roda em
+  // segundo plano e reporta o progresso via conversation.historySyncing, que o
+  // polling de detalhe já busca a cada 3s — o spinner acompanha esse flag.
+  async function syncHistory() {
+    if (!selectedId || triggeringSync || detail?.conversation?.historySyncing) return
+    setTriggeringSync(true)
     try {
-      const data = await api.get(`/admin/whatsapp/conversations/${selectedId}`, getAdminToken())
-      setDetail(data)
-      loadConversations()
+      await api.post(`/admin/whatsapp/conversations/${selectedId}/sync-history`, {}, getAdminToken())
+      loadDetail(selectedId)
     } catch (err) {
       handleError(err)
     } finally {
-      setRefreshingDetail(false)
+      setTriggeringSync(false)
     }
   }
 
   const aiEnabled = detail?.conversation?.aiEnabled
+  const historySyncing = triggeringSync || Boolean(detail?.conversation?.historySyncing)
 
   return (
     <div>
@@ -596,10 +597,10 @@ export default function WhatsApp() {
                       )}
                     </div>
                     <button
-                      onClick={refreshMessages}
-                      disabled={refreshingDetail}
-                      title="Buscar mensagens novas agora"
-                      aria-label="Atualizar mensagens"
+                      onClick={syncHistory}
+                      disabled={historySyncing}
+                      title={historySyncing ? 'Buscando histórico completo no WhatsApp...' : 'Buscar histórico completo dessa conversa no WhatsApp'}
+                      aria-label="Buscar histórico completo"
                       className="flex items-center justify-center w-8 h-8 rounded-lg cursor-pointer flex-shrink-0 disabled:opacity-50"
                       style={{
                         background: 'rgba(255,255,255,0.05)',
@@ -607,7 +608,7 @@ export default function WhatsApp() {
                         border: '1px solid rgba(255,255,255,0.08)',
                       }}
                     >
-                      <RefreshCw size={13} className={refreshingDetail ? 'animate-spin' : ''} />
+                      <RefreshCw size={13} className={historySyncing ? 'animate-spin' : ''} />
                     </button>
                     <button
                       onClick={toggleAi}
