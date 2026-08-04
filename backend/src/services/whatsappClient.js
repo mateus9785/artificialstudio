@@ -54,12 +54,12 @@ function jidToPhoneNumber(jid) {
   return jid.split('@')[0].split(':')[0]
 }
 
-/** Portão de ingestão do HISTÓRICO: no replay de syncFullHistory, só guarda
- * mensagem de numero que e lead do pegasus-scout (whatsapp_phone_e164/
- * phone_e164). Sem isso, um re-pareamento traria de volta todo o historico
- * pessoal do numero escaneado, contato a contato, do jeito que a limpeza
- * manual em produção removeu. Mensagens LIVE não passam por aqui: qualquer
- * contato 1:1 é ingerido, porque o atendimento agora acontece pelo WhatsApp. */
+/** Portão de ingestão: só guarda mensagem de numero que e lead do pegasus-scout
+ * (scout_prospects.whatsapp_phone_e164/phone_e164). Vale para mensagem live E
+ * para o replay de syncFullHistory — o numero conectado e pessoal, entao sem o
+ * portao entrariam contatos pessoais e visitantes do site (que o dono atende
+ * direto no aplicativo, sem IA). O painel e a IA vendedora sao exclusivos da
+ * prospeccao. */
 async function isKnownLeadPhone(phoneDigits) {
   if (!phoneDigits) return false
   const [rows] = await pool.query(
@@ -221,7 +221,7 @@ async function ingestOne(msg, { isHistory = false } = {}) {
   if (!msg.message || msg.message.protocolMessage) return
 
   const phoneNumber = remoteJid.endsWith('@s.whatsapp.net') ? jidToPhoneNumber(remoteJid) : undefined
-  if (isHistory && !(await isKnownLeadPhone(phoneNumber))) return // historico so reimporta leads do scout
+  if (!(await isKnownLeadPhone(phoneNumber))) return // numero nao e lead do pegasus-scout: nao ingere
 
   const mediaKey = MEDIA_MESSAGE_TYPES.find((key) => msg.message?.[key])
   const attachment = mediaKey ? await saveMediaAttachment(msg, mediaKey) : null

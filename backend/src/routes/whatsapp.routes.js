@@ -113,9 +113,10 @@ whatsappRouter.post(
   }),
 )
 
-// Lista todas as conversas 1:1 (o gate por lead do scout saiu junto com o chat
-// do site — o WhatsApp agora é o canal de atendimento). `isLead` marca as que
-// batem com um prospect do pegasus-scout, para o painel destacar.
+// Lista só as conversas de leads do pegasus-scout — o painel e a IA vendedora
+// são exclusivos da prospecção. Visitantes do site e contatos pessoais falam
+// com o dono direto no aplicativo do WhatsApp, sem passar por aqui (o gate de
+// ingestão em whatsappClient.js nem grava as mensagens deles).
 whatsappRouter.get(
   '/admin/whatsapp/conversations',
   requireAdmin,
@@ -124,21 +125,22 @@ whatsappRouter.get(
       SELECT c.id, ct.display_name AS displayName, ct.avatar_url AS avatarUrl, ct.phone_number AS phoneNumber,
         c.last_message_preview AS lastMessage, c.last_message_at AS lastMessageAt, c.unread_count AS unreadCount,
         c.ai_enabled AS aiEnabled,
-        (SELECT p.id FROM scout_prospects p
-          WHERE REGEXP_REPLACE(COALESCE(p.whatsapp_phone_e164, p.phone_e164), '[^0-9]', '') = ct.phone_number
-          LIMIT 1) AS prospectId,
         (SELECT s.status FROM whatsapp_ai_suggestions s
           WHERE s.conversation_id = c.id AND s.status IN ('pending', 'running', 'draft', 'error')
           ORDER BY s.id DESC LIMIT 1) AS suggestionStatus
       FROM whatsapp_conversations c
       JOIN whatsapp_contacts ct ON ct.id = c.contact_id
+      WHERE EXISTS (
+        SELECT 1 FROM scout_prospects p
+        WHERE REGEXP_REPLACE(COALESCE(p.whatsapp_phone_e164, p.phone_e164), '[^0-9]', '') = ct.phone_number
+      )
       ORDER BY c.last_message_at DESC
     `)
     res.json(
       rows.map((row) => ({
         ...row,
         aiEnabled: Boolean(row.aiEnabled),
-        isLead: row.prospectId !== null,
+        isLead: true,
       })),
     )
   }),

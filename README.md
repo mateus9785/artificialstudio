@@ -39,9 +39,11 @@ Landing page + backend (Node/Express/MySQL) com painel administrativo em `/admin
 - **Conversas IA**: tela do antigo chat do site (pipeline hoje **dormant** — o widget foi trocado
   pelo botão de WhatsApp na landing). Fica no ar para consultar o histórico comercial e como
   rollback barato.
-- **WhatsApp**: o canal de atendimento. Conversas do número conectado via WhatsApp Web (Baileys),
-  agora com a **IA vendedora**: toda mensagem recebida (em conversa com "IA on") gera uma **sugestão
-  de resposta** que você aprova, edita, regenera ou descarta — **nada é enviado sem o seu clique**.
+- **WhatsApp**: o canal de venda ativa. Mostra **só as conversas de leads do pegasus-scout** —
+  visitantes do site (botão flutuante) e contatos pessoais você atende direto no aplicativo, sem
+  passar pelo painel nem pela IA. Nas conversas de lead entra a **IA vendedora**: toda mensagem
+  recebida (em conversa com "IA on") gera uma **sugestão de resposta** que você aprova, edita,
+  regenera ou descarta — **nada é enviado sem o seu clique**.
   O painel lateral mostra os dados que a IA coleta durante a conversa (nome, empresa, contato,
   requisitos, estágio) e, quando o número é lead do scout, os dados de prospecção. A lateral direita
   lista os leads do [pegasus-scout](../pegasus-scout); o botão "iniciar conversa" enfileira uma
