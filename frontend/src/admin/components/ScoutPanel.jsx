@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Search, Loader2, RotateCw, MessageCircle, Star, X, ExternalLink } from 'lucide-react'
+import { Search, Loader2, RotateCw, MessageCircle, Star, X, ExternalLink, ChevronDown, ChevronUp } from 'lucide-react'
 import { api } from '../../lib/api'
 import { getAdminToken } from '../../lib/adminAuth'
 import { useAdminGuard } from '../useAdminGuard'
@@ -312,7 +312,7 @@ function LeadDetailModal({ lead, isConnected, onClose, onStartConversation }) {
   )
 }
 
-export default function ScoutPanel({ isConnected, onStartConversation }) {
+export default function ScoutPanel({ isConnected, onStartConversation, collapsed = false, onToggleCollapse }) {
   const { handleError } = useAdminGuard()
   const [form, setForm] = useState(DEFAULT_FORM)
   const [submitting, setSubmitting] = useState(false)
@@ -442,12 +442,29 @@ export default function ScoutPanel({ isConnected, onStartConversation }) {
       className="flex flex-col rounded-xl overflow-hidden min-h-0"
       style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
     >
-      <div className="p-4 flex flex-col gap-3 flex-shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+      {/* Cabeçalho clicável: no acordeão da tela WhatsApp, abrir este painel colapsa o de dados do contato. */}
+      <button
+        type="button"
+        onClick={onToggleCollapse}
+        disabled={!onToggleCollapse}
+        className="w-full p-4 flex items-center justify-between flex-shrink-0 cursor-pointer disabled:cursor-default"
+        style={{ borderBottom: collapsed ? 'none' : '1px solid rgba(255,255,255,0.06)' }}
+      >
         <h2 className="text-sm font-semibold flex items-center gap-2" style={{ color: '#f4f4f5' }}>
           <Search size={15} style={{ color: '#22d3ee' }} />
           Prospecção
         </h2>
+        {onToggleCollapse &&
+          (collapsed ? (
+            <ChevronDown size={15} style={{ color: '#71717a' }} />
+          ) : (
+            <ChevronUp size={15} style={{ color: '#71717a' }} />
+          ))}
+      </button>
 
+      {/* `hidden` em vez de desmontar: preserva formulário, leads carregados e execução em andamento. */}
+      <div className={collapsed ? 'hidden' : 'flex flex-col min-h-0 flex-1'}>
+      <div className="px-4 pb-4 flex flex-col gap-3 flex-shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
         <form onSubmit={handleSubmit} className="flex flex-col gap-2">
           <input
             value={form.niche}
@@ -584,6 +601,7 @@ export default function ScoutPanel({ isConnected, onStartConversation }) {
             </button>
           </div>
         ))}
+      </div>
       </div>
 
       {selectedLead && (

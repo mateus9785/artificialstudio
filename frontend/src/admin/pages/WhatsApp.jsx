@@ -14,6 +14,9 @@ import {
   X,
   Pencil,
   Building2,
+  ChevronDown,
+  ChevronUp,
+  ClipboardList,
 } from 'lucide-react'
 import { api, API_URL } from '../../lib/api'
 import { getAdminToken } from '../../lib/adminAuth'
@@ -182,15 +185,14 @@ const ESTAGIO_LABEL = {
 /**
  * Painel lateral com os dados que a IA coleta durante a conversa (nome, empresa,
  * contato, requisitos...) — mesmo papel do QuotePanel da tela Conversas IA — e,
- * quando o contato é lead do pegasus-scout, os dados de prospecção.
+ * quando o contato é lead do pegasus-scout, os dados de prospecção. Faz acordeão
+ * com o painel de Prospecção: abrir um colapsa o outro.
  */
-function CollectedDataPanel({ collectedData, lead }) {
+function CollectedDataPanel({ collectedData, lead, collapsed, onToggleCollapse }) {
   const data = collectedData || {}
   const hasCollected = Object.entries(data).some(
     ([key, value]) => key !== 'kanban_card_id' && value !== null && value !== undefined && (!Array.isArray(value) || value.length > 0),
   )
-
-  if (!hasCollected && !lead) return null
 
   const Row = ({ label, value }) =>
     value === null || value === undefined || value === '' ? null : (
@@ -206,9 +208,35 @@ function CollectedDataPanel({ collectedData, lead }) {
 
   return (
     <div
-      className="rounded-xl p-4 flex flex-col gap-3 overflow-y-auto"
-      style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', maxHeight: '40vh' }}
+      className="rounded-xl flex flex-col overflow-hidden flex-shrink-0"
+      style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
     >
+      <button
+        type="button"
+        onClick={onToggleCollapse}
+        className="w-full p-4 flex items-center justify-between cursor-pointer flex-shrink-0"
+        style={{ borderBottom: collapsed ? 'none' : '1px solid rgba(255,255,255,0.06)' }}
+      >
+        <h2 className="text-sm font-semibold flex items-center gap-2" style={{ color: '#f4f4f5' }}>
+          <ClipboardList size={15} style={{ color: '#22d3ee' }} />
+          Dados do contato
+        </h2>
+        {collapsed ? (
+          <ChevronDown size={15} style={{ color: '#71717a' }} />
+        ) : (
+          <ChevronUp size={15} style={{ color: '#71717a' }} />
+        )}
+      </button>
+
+      <div
+        className={collapsed ? 'hidden' : 'p-4 flex flex-col gap-3 overflow-y-auto'}
+        style={{ maxHeight: '45vh' }}
+      >
+      {!hasCollected && !lead && (
+        <p className="text-xs" style={{ color: '#52525b' }}>
+          A IA ainda não coletou dados desta conversa — eles aparecem aqui conforme o papo avança.
+        </p>
+      )}
       {lead && (
         <div className="flex flex-col gap-2 pb-3" style={{ borderBottom: hasCollected ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
           <div className="flex items-center gap-1.5 text-xs font-medium" style={{ color: '#a78bfa' }}>
@@ -249,6 +277,7 @@ function CollectedDataPanel({ collectedData, lead }) {
           {data.kanban_card_id && <Row label="Card no kanban" value={`#${data.kanban_card_id} (Produção Automatizada)`} />}
         </div>
       )}
+      </div>
     </div>
   )
 }
@@ -265,6 +294,9 @@ export default function WhatsApp() {
   // Sugestão que o admin mandou para o input via "Editar": o envio do form passa
   // pela rota de aprovação (grava final_text) em vez do envio comum.
   const [editingSuggestionId, setEditingSuggestionId] = useState(null)
+  // Acordeão da coluna direita: exatamente um painel aberto por vez —
+  // 'dados' (dados do contato/lead) ou 'scout' (Prospecção).
+  const [openPanel, setOpenPanel] = useState('scout')
   const messagesEndRef = useRef(null)
 
   const loadStatus = useCallback(() => {
@@ -307,13 +339,23 @@ export default function WhatsApp() {
   }, [])
 
   useEffect(() => {
-    if (!selectedId) return
+    if (!selectedId) {
+      setOpenPanel('scout') // sem conversa não existe painel de dados — Prospecção volta a abrir
+      return
+    }
     setDetail(null)
     setEditingSuggestionId(null)
+    setOpenPanel('dados') // acabou de abrir uma conversa: mostra os dados dela
     loadDetail(selectedId)
     const interval = setInterval(() => loadDetail(selectedId), DETAIL_POLL_MS)
     return () => clearInterval(interval)
   }, [selectedId, loadDetail])
+
+  // Clicar num cabeçalho abre aquele painel e colapsa o outro; clicar no que já
+  // está aberto inverte — sempre exatamente um aberto.
+  function togglePanel(name) {
+    setOpenPanel((prev) => (prev === name ? (name === 'dados' ? 'scout' : 'dados') : name))
+  }
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -650,9 +692,19 @@ export default function WhatsApp() {
 
         <div className="flex flex-col gap-4 min-h-0">
           {isConnected && detail && (
-            <CollectedDataPanel collectedData={detail.conversation.collectedData} lead={detail.lead} />
+            <CollectedDataPanel
+              collectedData={detail.conversation.collectedData}
+              lead={detail.lead}
+              collapsed={openPanel !== 'dados'}
+              onToggleCollapse={() => togglePanel('dados')}
+            />
           )}
-          <ScoutPanel isConnected={isConnected} onStartConversation={handleStartConversation} />
+          <ScoutPanel
+            isConnected={isConnected}
+            onStartConversation={handleStartConversation}
+            collapsed={Boolean(detail) && openPanel !== 'scout'}
+            onToggleCollapse={() => togglePanel('scout')}
+          />
         </div>
       </div>
     </div>
