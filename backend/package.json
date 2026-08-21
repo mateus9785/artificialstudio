@@ -12,6 +12,7 @@
     "migrate": "node src/db/migrate.ts",
     "seed": "node src/db/seed.ts",
     "seed:posts": "node src/db/seedBlogPosts.ts",
+    "backfill:post-slugs": "node src/db/backfillPostSlugs.ts",
     "lint": "oxlint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

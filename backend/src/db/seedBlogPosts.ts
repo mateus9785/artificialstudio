@@ -1,7 +1,6 @@
 import 'dotenv/config'
-import type { PoolConnection } from 'mysql2/promise'
 import { pool } from './pool.ts'
-import { slugify } from '../utils/slug.ts'
+import { ensureUniqueSlug } from '../utils/slug.ts'
 
 interface SeedBlogPost {
   title: string
@@ -288,18 +287,6 @@ Se você continua tratando a lentidão do seu site como "um detalhe para resolve
 Ter uma pontuação de 98+ no PageSpeed significa que você está oferecendo a melhor experiência possível para o seu usuário, reduzindo o custo dos seus anúncios, melhorando o seu SEO orgânico e, o mais importante de tudo, destravando o faturamento que hoje está preso na barra de carregamento.`,
   },
 ]
-
-async function ensureUniqueSlug(connection: PoolConnection, baseSlug: string): Promise<string> {
-  const base = slugify(baseSlug) || 'post'
-  let slug = base
-  let attempt = 1
-  while (true) {
-    const [rows] = await connection.query('SELECT id FROM posts WHERE slug = ?', [slug])
-    if ((rows as unknown[]).length === 0) return slug
-    attempt += 1
-    slug = `${base}-${attempt}`
-  }
-}
 
 async function seedBlogPosts(): Promise<void> {
   const connection = await pool.getConnection()

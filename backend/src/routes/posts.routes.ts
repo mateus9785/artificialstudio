@@ -4,7 +4,7 @@ import fs from 'node:fs/promises'
 import { pool } from '../db/pool.ts'
 import { requireAdmin } from '../middleware/requireAdmin.ts'
 import { uploadPostImage, convertToWebp, resolveWebpFilename, UPLOADS_DIR } from '../middleware/upload.ts'
-import { slugify } from '../utils/slug.ts'
+import { ensureUniqueSlug } from '../utils/slug.ts'
 
 export const postsRouter = Router()
 
@@ -33,22 +33,6 @@ function serializePost(row: PostRow) {
     tagColor: row.tag_color,
     trending: Boolean(row.trending),
     publishedAt: row.published_at,
-  }
-}
-
-async function ensureUniqueSlug(baseSlug: string, excludeId?: string): Promise<string> {
-  const base = slugify(baseSlug) || 'post'
-  let slug = base
-  let attempt = 1
-
-  while (true) {
-    const [rows] = excludeId
-      ? await pool.query('SELECT id FROM posts WHERE slug = ? AND id != ?', [slug, excludeId])
-      : await pool.query('SELECT id FROM posts WHERE slug = ?', [slug])
-
-    if ((rows as unknown[]).length === 0) return slug
-    attempt += 1
-    slug = `${base}-${attempt}`
   }
 }
 
@@ -118,7 +102,7 @@ postsRouter.post('/admin/posts', requireAdmin, async (req, res) => {
   if (error) return res.status(400).json({ error })
 
   const { title, excerpt, content, imageUrl, tag, tagColor, trending, publishedAt, slug } = req.body as PostBody
-  const finalSlug = await ensureUniqueSlug(slug || title || '')
+  const finalSlug = await ensureUniqueSlug(pool, slug || title || '')
 
   const [result] = await pool.query(
     `INSERT INTO posts (title, slug, excerpt, content, image_url, tag, tag_color, trending, published_at)
@@ -135,7 +119,7 @@ postsRouter.put('/admin/posts/:id', requireAdmin, async (req, res) => {
   if (error) return res.status(400).json({ error })
 
   const { title, excerpt, content, imageUrl, tag, tagColor, trending, publishedAt, slug } = req.body as PostBody
-  const finalSlug = await ensureUniqueSlug(slug || title || '', req.params.id)
+  const finalSlug = await ensureUniqueSlug(pool, slug || title || '', req.params.id)
 
   const [result] = await pool.query(
     `UPDATE posts SET title = ?, slug = ?, excerpt = ?, content = ?, image_url = ?, tag = ?, tag_color = ?, trending = ?, published_at = ?

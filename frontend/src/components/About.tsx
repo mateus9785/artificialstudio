@@ -5,7 +5,7 @@ import { WHATSAPP_NUMBER } from '../lib/whatsapp'
 const SITE_URL = 'https://artificialstudio.com.br'
 const PAGE_TITLE = 'Sobre Nós | Artificial Studio'
 const PAGE_DESCRIPTION =
-  'Mais de 10 anos de experiência prática em programação para descomplicar a tecnologia e impulsionar o crescimento do seu negócio.'
+  'Mais de 6 anos de experiência prática em programação para descomplicar a tecnologia e impulsionar o crescimento do seu negócio.'
 
 interface Pillar {
   icon: LucideIcon
@@ -27,7 +27,7 @@ const PILLARS: Pillar[] = [
     accent: '#a855f7',
     title: 'Automação e Inteligência Artificial',
     description:
-      'Chega de perder tempo com tarefas repetitivas. Desenvolvemos robôs de atendimento personalizados (Chatbots) integrados ao ChatGPT e criamos automações web inteligentes para coletar dados e realizar processos automáticos na internet, liberando sua equipe para focar no que realmente importa.',
+      'Chega de perder tempo com tarefas repetitivas. Desenvolvemos robôs de atendimento personalizados (Chatbots) integrados a LLMs como Claude e OpenAI e criamos automações web inteligentes para coletar dados e realizar processos automáticos na internet, liberando sua equipe para focar no que realmente importa.',
   },
   {
     icon: Network,
@@ -140,7 +140,7 @@ export default function About() {
                 Por trás da Artificial Studio
               </h2>
               <p className="text-base leading-relaxed" style={{ color: '#a1a1aa' }}>
-                Por trás da nossa agência está uma trajetória de mais de 10 anos de experiência prática em
+                Por trás da nossa agência está uma trajetória de mais de 6 anos de experiência prática em
                 programação, liderada por quem entende de verdade como construir soluções digitais inteligentes,
                 seguras e lucrativas.
               </p>
@@ -202,7 +202,7 @@ export default function About() {
             quer mais vendas, processos mais rápidos, custos reduzidos e clientes satisfeitos.
           </p>
           <p className="text-base leading-relaxed" style={{ color: '#a1a1aa' }}>
-            Unimos a solidez de 10 anos de mercado à inovação da Inteligência Artificial para entregar o futuro do
+            Unimos a solidez de 6 anos de mercado à inovação da Inteligência Artificial para entregar o futuro do
             desenvolvimento de software hoje.
           </p>
         </div>

@@ -23,7 +23,7 @@ export default function Founder() {
               className="font-bold mb-3 leading-tight"
               style={{ fontSize: 'clamp(1.3rem, 3vw, 1.7rem)', color: '#f4f4f5', letterSpacing: '-0.4px' }}
             >
-              Mais de 10 anos de experiência prática em programação
+              Mais de 6 anos de experiência prática em programação
             </h2>
             <p className="text-sm leading-relaxed mb-4" style={{ color: '#a1a1aa' }}>
               A Artificial Studio nasceu para descomplicar a tecnologia e impulsionar o crescimento do seu negócio.
