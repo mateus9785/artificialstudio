@@ -18,7 +18,8 @@ export const uploadPostImage = multer({
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     if (!ALLOWED_TYPES.has(file.mimetype)) {
-      return cb(new Error('Formato de imagem não suportado. Use JPEG, PNG, WEBP ou GIF.'))
+      cb(new Error('Formato de imagem não suportado. Use JPEG, PNG, WEBP ou GIF.'))
+      return
     }
     cb(null, true)
   },
@@ -26,7 +27,7 @@ export const uploadPostImage = multer({
 
 // Converte o buffer para .webp reduzindo qualidade e, se necessário, dimensões
 // até caber no limite de 150KB.
-export async function convertToWebp(buffer) {
+export async function convertToWebp(buffer: Buffer): Promise<Buffer> {
   let quality = 80
   let output = await sharp(buffer).webp({ quality }).toBuffer()
 
@@ -37,7 +38,7 @@ export async function convertToWebp(buffer) {
 
   if (output.length > MAX_WEBP_BYTES) {
     const { width } = await sharp(buffer).metadata()
-    let targetWidth = width
+    let targetWidth = width ?? 0
     while (output.length > MAX_WEBP_BYTES && targetWidth > 300) {
       targetWidth = Math.round(targetWidth * 0.85)
       output = await sharp(buffer).resize({ width: targetWidth }).webp({ quality: 60 }).toBuffer()
@@ -49,7 +50,7 @@ export async function convertToWebp(buffer) {
 
 // Nomeia o arquivo a partir do título do post (slug); se o título ainda não
 // foi preenchido, cai para o nome original do arquivo enviado.
-export function resolveWebpFilename(title, originalname) {
+export function resolveWebpFilename(title: string | null | undefined, originalname: string | null | undefined): string {
   const base = slugify(title) || slugify(path.parse(originalname || '').name) || 'imagem'
   let filename = `${base}.webp`
   let attempt = 1

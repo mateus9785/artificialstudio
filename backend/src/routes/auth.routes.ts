@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs'
 import rateLimit from 'express-rate-limit'
 import { pool } from '../db/pool.ts'
 import { signAdminToken } from '../utils/jwt.ts'
-import { requireAdmin } from '../middleware/requireAdmin.js'
+import { requireAdmin } from '../middleware/requireAdmin.ts'
 
 export const authRouter = Router()
 
@@ -16,6 +16,12 @@ const loginLimiter = rateLimit({
   legacyHeaders: false,
 })
 
+interface AdminRow {
+  id: number
+  username: string
+  password_hash: string
+}
+
 authRouter.post('/login', loginLimiter, async (req, res) => {
   const { username, password, remember } = req.body || {}
 
@@ -24,7 +30,7 @@ authRouter.post('/login', loginLimiter, async (req, res) => {
   }
 
   const [rows] = await pool.query('SELECT id, username, password_hash FROM admins WHERE username = ?', [username])
-  const admin = rows[0]
+  const admin = (rows as AdminRow[])[0]
 
   if (!admin) {
     return res.status(401).json({ error: 'Credenciais inválidas.' })
@@ -40,7 +46,7 @@ authRouter.post('/login', loginLimiter, async (req, res) => {
 })
 
 authRouter.get('/me', requireAdmin, (req, res) => {
-  res.json({ admin: { id: req.admin.sub, username: req.admin.username } })
+  res.json({ admin: { id: req.admin?.sub, username: req.admin?.username } })
 })
 
 authRouter.put('/password', requireAdmin, async (req, res) => {
@@ -55,8 +61,8 @@ authRouter.put('/password', requireAdmin, async (req, res) => {
     })
   }
 
-  const [rows] = await pool.query('SELECT id, password_hash FROM admins WHERE id = ?', [req.admin.sub])
-  const admin = rows[0]
+  const [rows] = await pool.query('SELECT id, password_hash FROM admins WHERE id = ?', [req.admin?.sub])
+  const admin = (rows as AdminRow[])[0]
   if (!admin) {
     return res.status(404).json({ error: 'Administrador não encontrado.' })
   }

@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { pool } from '../db/pool.ts'
-import { requireAdmin } from '../middleware/requireAdmin.js'
+import { requireAdmin } from '../middleware/requireAdmin.ts'
+import { asyncHandler } from '../middleware/asyncHandler.ts'
 import {
   connectWhatsApp,
   disconnectWhatsApp,
@@ -13,16 +14,13 @@ import { enqueueSuggestion, materializeWhatsAppQuote } from '../services/waSugge
 
 export const whatsappRouter = Router()
 
-// Express 4 não encaminha rejeição de handler async para o middleware de erro sozinho.
-function asyncHandler(fn) {
-  return (req, res, next) => {
-    Promise.resolve(fn(req, res, next)).catch(next)
-  }
+interface SendErrorLike extends Error {
+  statusCode?: number
 }
 
 // mysql2 devolve coluna JSON já parseada, mas versões antigas (e dumps manuais)
 // podem devolver string — normaliza os dois casos.
-function parseJsonColumn(value) {
+function parseJsonColumn(value: unknown): unknown {
   if (value === null || value === undefined) return null
   if (typeof value === 'string') {
     try {
@@ -34,19 +32,25 @@ function parseJsonColumn(value) {
   return value
 }
 
+interface SendOptions {
+  text?: string | null
+  imageBase64?: string | null
+  imageMimeType?: string | null
+}
+
 /**
  * Envia uma mensagem de texto/imagem e registra em whatsapp_messages, com o mesmo
  * ciclo queued → sent/failed do envio manual. Usado pelo composer da tela e pela
  * aprovação de sugestão da IA — os dois caminhos terminam no mesmo registro.
  */
-async function sendAndRecordMessage(conversationId, jid, { text, imageBase64, imageMimeType }) {
+async function sendAndRecordMessage(conversationId: string | number, jid: string, { text, imageBase64, imageMimeType }: SendOptions) {
   const trimmed = text?.trim()
   const [inserted] = await pool.query(
     `INSERT INTO whatsapp_messages (conversation_id, direction, status, text, attachment_type, sent_at)
      VALUES (?, 'outbound', 'queued', ?, ?, NOW())`,
     [conversationId, trimmed || null, imageBase64 ? 'image' : null],
   )
-  const messageId = inserted.insertId
+  const messageId = (inserted as { insertId: number }).insertId
 
   try {
     const externalMessageId = await sendWhatsAppMessage(jid, { text: trimmed, imageBase64, imageMimeType })
@@ -62,10 +66,10 @@ async function sendAndRecordMessage(conversationId, jid, { text, imageBase64, im
   } catch (err) {
     await pool.query('UPDATE whatsapp_messages SET status = ?, error_message = ? WHERE id = ?', [
       'failed',
-      String(err.message || err).slice(0, 2000),
+      String((err as Error).message || err).slice(0, 2000),
       messageId,
     ])
-    const wrapped = new Error(err.message || 'falha ao enviar mensagem')
+    const wrapped: SendErrorLike = new Error((err as Error).message || 'falha ao enviar mensagem')
     wrapped.statusCode = 502
     throw wrapped
   }
@@ -75,7 +79,7 @@ async function sendAndRecordMessage(conversationId, jid, { text, imageBase64, im
      FROM whatsapp_messages WHERE id = ?`,
     [messageId],
   )
-  return rows[0]
+  return (rows as unknown[])[0]
 }
 
 const CURRENT_SUGGESTION_SQL = `
@@ -86,19 +90,17 @@ const CURRENT_SUGGESTION_SQL = `
   ORDER BY id DESC
   LIMIT 1`
 
-async function loadCurrentSuggestion(conversationId) {
+async function loadCurrentSuggestion(conversationId: string | number) {
   const [rows] = await pool.query(CURRENT_SUGGESTION_SQL, [conversationId])
-  return rows[0] || null
+  return (rows as unknown[])[0] || null
 }
 
 whatsappRouter.get(
   '/admin/whatsapp/status',
   requireAdmin,
   asyncHandler(async (req, res) => {
-    const [rows] = await pool.query(
-      'SELECT status, qr_data AS qr, phone_number AS phoneNumber FROM whatsapp_connection WHERE id = 1',
-    )
-    res.json(rows[0] || { status: 'disconnected', qr: null, phoneNumber: null })
+    const [rows] = await pool.query('SELECT status, qr_data AS qr, phone_number AS phoneNumber FROM whatsapp_connection WHERE id = 1')
+    res.json((rows as unknown[])[0] || { status: 'disconnected', qr: null, phoneNumber: null })
   }),
 )
 
@@ -144,7 +146,7 @@ whatsappRouter.get(
       ORDER BY c.last_message_at DESC
     `)
     res.json(
-      rows.map((row) => ({
+      (rows as Array<Record<string, unknown>>).map((row) => ({
         ...row,
         aiEnabled: Boolean(row.aiEnabled),
         isLead: true,
@@ -166,13 +168,23 @@ whatsappRouter.get(
        WHERE c.id = ?`,
       [id],
     )
-    if (!convRows[0]) return res.status(404).json({ error: 'conversa não encontrada' })
+    interface ConversationDetailRow {
+      id: number
+      jid: string
+      displayName: string | null
+      avatarUrl: string | null
+      phoneNumber: string | null
+      aiEnabled: number | boolean
+      collectedData: unknown
+    }
+    const convRow = (convRows as ConversationDetailRow[])[0]
+    if (!convRow) return res.status(404).json({ error: 'conversa não encontrada' })
 
     const conversation = {
-      ...convRows[0],
-      aiEnabled: Boolean(convRows[0].aiEnabled),
-      collectedData: parseJsonColumn(convRows[0].collectedData),
-      historySyncing: isBackfillRunning(convRows[0].jid),
+      ...convRow,
+      aiEnabled: Boolean(convRow.aiEnabled),
+      collectedData: parseJsonColumn(convRow.collectedData),
+      historySyncing: isBackfillRunning(convRow.jid as string),
     }
 
     const [messages] = await pool.query(
@@ -197,7 +209,8 @@ whatsappRouter.get(
        LIMIT 1`,
       [conversation.phoneNumber],
     )
-    const lead = leadRows[0] ? { ...leadRows[0], dores: parseJsonColumn(leadRows[0].dores) } : null
+    const leadRow = (leadRows as Array<Record<string, unknown>>)[0]
+    const lead = leadRow ? { ...leadRow, dores: parseJsonColumn(leadRow.dores) } : null
 
     const suggestion = await loadCurrentSuggestion(id)
 
@@ -223,7 +236,8 @@ whatsappRouter.post(
     }
 
     const [convRows] = await pool.query('SELECT id, last_message_at AS lastMessageAt FROM whatsapp_conversations WHERE id = ?', [id])
-    if (!convRows[0]) return res.status(404).json({ error: 'conversa não encontrada' })
+    const convRow = (convRows as Array<{ id: number; lastMessageAt: Date | null }>)[0]
+    if (!convRow) return res.status(404).json({ error: 'conversa não encontrada' })
 
     const parsedSentAt = sentAt ? new Date(sentAt) : new Date()
     if (Number.isNaN(parsedSentAt.getTime())) {
@@ -236,7 +250,7 @@ whatsappRouter.post(
       [id, direction, direction === 'inbound' ? 'delivered' : 'sent', trimmed, parsedSentAt],
     )
 
-    const isNewest = !convRows[0].lastMessageAt || parsedSentAt > convRows[0].lastMessageAt
+    const isNewest = !convRow.lastMessageAt || parsedSentAt > convRow.lastMessageAt
     if (isNewest) {
       await pool.query('UPDATE whatsapp_conversations SET last_message_at = ?, last_message_preview = ? WHERE id = ?', [
         parsedSentAt,
@@ -248,9 +262,9 @@ whatsappRouter.post(
     const [rows] = await pool.query(
       `SELECT id, direction, status, text, is_manual AS isManual, sent_at AS sentAt
        FROM whatsapp_messages WHERE id = ?`,
-      [inserted.insertId],
+      [(inserted as { insertId: number }).insertId],
     )
-    res.status(201).json(rows[0])
+    res.status(201).json((rows as unknown[])[0])
   }),
 )
 
@@ -269,9 +283,10 @@ whatsappRouter.post(
        WHERE c.id = ?`,
       [id],
     )
-    if (!convRows[0]) return res.status(404).json({ error: 'conversa não encontrada' })
+    const convRow = (convRows as Array<{ jid: string }>)[0]
+    if (!convRow) return res.status(404).json({ error: 'conversa não encontrada' })
 
-    backfillConversationHistory(convRows[0].jid).catch((err) => {
+    backfillConversationHistory(convRow.jid).catch((err) => {
       console.error(`[whatsapp] falha ao buscar historico da conversa ${id}:`, err)
     })
     res.status(202).json({ ok: true })
@@ -295,13 +310,15 @@ whatsappRouter.post(
        WHERE c.id = ?`,
       [id],
     )
-    if (!convRows[0]) return res.status(404).json({ error: 'conversa não encontrada' })
+    const convRow = (convRows as Array<{ id: number; jid: string }>)[0]
+    if (!convRow) return res.status(404).json({ error: 'conversa não encontrada' })
 
     try {
-      const message = await sendAndRecordMessage(id, convRows[0].jid, { text, imageBase64, imageMimeType })
+      const message = await sendAndRecordMessage(id, convRow.jid, { text, imageBase64, imageMimeType })
       res.status(201).json(message)
     } catch (err) {
-      res.status(err.statusCode || 502).json({ error: err.message || 'falha ao enviar mensagem' })
+      const sendErr = err as SendErrorLike
+      res.status(sendErr.statusCode || 502).json({ error: sendErr.message || 'falha ao enviar mensagem' })
     }
   }),
 )
@@ -322,20 +339,28 @@ whatsappRouter.post(
   asyncHandler(async (req, res) => {
     const { id } = req.params
     const [convRows] = await pool.query('SELECT id FROM whatsapp_conversations WHERE id = ?', [id])
-    if (!convRows[0]) return res.status(404).json({ error: 'conversa não encontrada' })
+    if ((convRows as unknown[]).length === 0) return res.status(404).json({ error: 'conversa não encontrada' })
 
     // Conversa ainda sem mensagem só existe vinda do fluxo de abordagem fria do
     // scout — regenerar nela é regenerar a abertura. Nas demais é a próxima
     // resposta (ou um follow-up, se o cliente sumiu).
-    const [countRows] = await pool.query(
-      'SELECT COUNT(*) AS n FROM whatsapp_messages WHERE conversation_id = ? AND deleted_at IS NULL',
-      [id],
-    )
-    const kind = countRows[0].n === 0 ? 'cold_outreach' : 'reply'
-    await enqueueSuggestion(id, kind)
+    const [countRows] = await pool.query('SELECT COUNT(*) AS n FROM whatsapp_messages WHERE conversation_id = ? AND deleted_at IS NULL', [
+      id,
+    ])
+    const kind = (countRows as Array<{ n: number }>)[0].n === 0 ? 'cold_outreach' : 'reply'
+    await enqueueSuggestion(Number(id), kind)
     res.status(202).json({ ok: true, kind })
   }),
 )
+
+interface SuggestionRow {
+  id: number
+  conversation_id: number
+  suggested_text: string | null
+  status: string
+  quote_marker: 'none' | 'presented' | 'confirmed'
+  jid: string
+}
 
 whatsappRouter.post(
   '/admin/whatsapp/suggestions/:id/approve',
@@ -352,7 +377,7 @@ whatsappRouter.post(
        WHERE s.id = ?`,
       [id],
     )
-    const suggestion = rows[0]
+    const suggestion = (rows as SuggestionRow[])[0]
     if (!suggestion) return res.status(404).json({ error: 'sugestão não encontrada' })
     if (suggestion.status !== 'draft') {
       return res.status(409).json({ error: `sugestão não está mais disponível (status: ${suggestion.status})` })
@@ -361,11 +386,15 @@ whatsappRouter.post(
     const text = bodyText || suggestion.suggested_text
     if (!text) return res.status(400).json({ error: 'sugestão sem texto' })
 
-    let message
+    let message: { id: number } & Record<string, unknown>
     try {
-      message = await sendAndRecordMessage(suggestion.conversation_id, suggestion.jid, { text })
+      message = (await sendAndRecordMessage(suggestion.conversation_id, suggestion.jid, { text })) as { id: number } & Record<
+        string,
+        unknown
+      >
     } catch (err) {
-      return res.status(err.statusCode || 502).json({ error: err.message || 'falha ao enviar mensagem' })
+      const sendErr = err as SendErrorLike
+      return res.status(sendErr.statusCode || 502).json({ error: sendErr.message || 'falha ao enviar mensagem' })
     }
 
     await pool.query(
@@ -395,7 +424,7 @@ whatsappRouter.post(
       "UPDATE whatsapp_ai_suggestions SET status = 'discarded', finished_at = NOW() WHERE id = ? AND status IN ('draft', 'error')",
       [req.params.id],
     )
-    if (result.affectedRows === 0) return res.status(404).json({ error: 'sugestão não encontrada ou já resolvida' })
+    if ((result as { affectedRows: number }).affectedRows === 0) return res.status(404).json({ error: 'sugestão não encontrada ou já resolvida' })
     res.status(204).send()
   }),
 )
@@ -412,9 +441,9 @@ whatsappRouter.post(
         : 'UPDATE whatsapp_conversations SET ai_enabled = NOT ai_enabled WHERE id = ?',
       typeof enabled === 'boolean' ? [enabled, id] : [id],
     )
-    if (result.affectedRows === 0) return res.status(404).json({ error: 'conversa não encontrada' })
+    if ((result as { affectedRows: number }).affectedRows === 0) return res.status(404).json({ error: 'conversa não encontrada' })
     const [rows] = await pool.query('SELECT ai_enabled AS aiEnabled FROM whatsapp_conversations WHERE id = ?', [id])
-    res.json({ aiEnabled: Boolean(rows[0].aiEnabled) })
+    res.json({ aiEnabled: Boolean((rows as Array<{ aiEnabled: unknown }>)[0].aiEnabled) })
   }),
 )
 
@@ -431,12 +460,13 @@ whatsappRouter.delete(
        WHERE m.id = ? AND m.conversation_id = ?`,
       [messageId, id],
     )
-    if (!rows[0]) return res.status(404).json({ error: 'mensagem não encontrada' })
+    const row = (rows as Array<{ direction: string; externalMessageId: string | null; jid: string }>)[0]
+    if (!row) return res.status(404).json({ error: 'mensagem não encontrada' })
 
     await pool.query('UPDATE whatsapp_messages SET deleted_at = NOW() WHERE id = ?', [messageId])
 
-    if (rows[0].direction === 'outbound' && rows[0].externalMessageId) {
-      deleteWhatsAppMessage(rows[0].jid, rows[0].externalMessageId).catch((err) => {
+    if (row.direction === 'outbound' && row.externalMessageId) {
+      deleteWhatsAppMessage(row.jid, row.externalMessageId).catch((err) => {
         console.error('[whatsapp] falha ao revogar mensagem no provedor', err)
       })
     }

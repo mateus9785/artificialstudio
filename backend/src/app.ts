@@ -1,14 +1,14 @@
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
-import express from 'express'
+import express, { type NextFunction, type Request, type Response } from 'express'
 import cors from 'cors'
-import { authRouter } from './routes/auth.routes.js'
-import { postsRouter } from './routes/posts.routes.js'
-import { chatRouter } from './routes/chat.routes.js'
-import { kanbanRouter } from './routes/kanban.routes.js'
-import { financeiroRouter } from './routes/financeiro.routes.js'
-import { whatsappRouter } from './routes/whatsapp.routes.js'
-import { scoutRunsRouter } from './routes/scoutRuns.routes.js'
+import { authRouter } from './routes/auth.routes.ts'
+import { postsRouter } from './routes/posts.routes.ts'
+import { chatRouter } from './routes/chat.routes.ts'
+import { kanbanRouter } from './routes/kanban.routes.ts'
+import { financeiroRouter } from './routes/financeiro.routes.ts'
+import { whatsappRouter } from './routes/whatsapp.routes.ts'
+import { scoutRunsRouter } from './routes/scoutRuns.routes.ts'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -43,7 +43,7 @@ app.use('/api', scoutRunsRouter)
 // Express só reconhece isso como error handler pela aridade (4 parâmetros) —
 // `_next` não é usado, mas remover o parâmetro faria o Express tratar isso
 // como middleware normal e nunca chamar essa função em erros.
-app.use((err, req, res, _next) => {
+app.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
   console.error(err)
   res.status(500).json({ error: 'Erro interno do servidor.' })
 })
