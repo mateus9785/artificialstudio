@@ -16,10 +16,7 @@ export default function Founder() {
             style={{ border: '1px solid rgba(255,255,255,0.08)' }}
           />
           <div className="text-center sm:text-left">
-            <span
-              className="text-xs font-medium"
-              style={{ color: '#22d3ee' }}
-            >
+            <span className="text-xs font-medium" style={{ color: '#22d3ee' }}>
               Quem está por trás do projeto
             </span>
             <h2

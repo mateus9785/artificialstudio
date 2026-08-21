@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Cloud, Bot, Network, ShieldCheck, ArrowRight } from 'lucide-react'
+import { Cloud, Bot, Network, ShieldCheck, ArrowRight, type LucideIcon } from 'lucide-react'
 import { WHATSAPP_NUMBER } from '../lib/whatsapp'
 
 const SITE_URL = 'https://artificialstudio.com.br'
@@ -7,7 +7,14 @@ const PAGE_TITLE = 'Sobre Nós | Artificial Studio'
 const PAGE_DESCRIPTION =
   'Mais de 10 anos de experiência prática em programação para descomplicar a tecnologia e impulsionar o crescimento do seu negócio.'
 
-const PILLARS = [
+interface Pillar {
+  icon: LucideIcon
+  accent: string
+  title: string
+  description: string
+}
+
+const PILLARS: Pillar[] = [
   {
     icon: Cloud,
     accent: '#22d3ee',
@@ -38,7 +45,7 @@ const PILLARS = [
   },
 ]
 
-function setMetaTag(selector, attrs) {
+function setMetaTag(selector: string, attrs: Record<string, string>): void {
   let el = document.head.querySelector(selector)
   if (!el) {
     el = document.createElement('meta')

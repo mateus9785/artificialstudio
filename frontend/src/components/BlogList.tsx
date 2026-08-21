@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from '../lib/api'
 import PostCard from './PostCard'
 import Pagination from './Pagination'
+import type { Post } from '../lib/types'
 
 const PAGE_SIZE = 6
 const SITE_URL = 'https://artificialstudio.com.br'
@@ -9,7 +10,9 @@ const PAGE_TITLE = 'Blog | Artificial Studio'
 const PAGE_DESCRIPTION =
   'Artigos sobre inteligência artificial, marketing digital, performance web e desenvolvimento de software para impulsionar o seu negócio.'
 
-function setMetaTag(selector, attrs) {
+type Status = 'loading' | 'ready' | 'error'
+
+function setMetaTag(selector: string, attrs: Record<string, string>): void {
   let el = document.head.querySelector(selector)
   if (!el) {
     el = document.createElement('meta')
@@ -46,8 +49,8 @@ function useBlogListSeo() {
 }
 
 export default function BlogList() {
-  const [posts, setPosts] = useState([])
-  const [status, setStatus] = useState('loading')
+  const [posts, setPosts] = useState<Post[]>([])
+  const [status, setStatus] = useState<Status>('loading')
   const [page, setPage] = useState(1)
 
   useBlogListSeo()
@@ -58,7 +61,7 @@ export default function BlogList() {
       .get('/posts')
       .then((data) => {
         if (active) {
-          setPosts(data)
+          setPosts(data as Post[])
           setStatus('ready')
         }
       })
@@ -73,7 +76,7 @@ export default function BlogList() {
   const totalPages = Math.max(1, Math.ceil(posts.length / PAGE_SIZE))
   const paginatedPosts = posts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
-  function handlePageChange(nextPage) {
+  function handlePageChange(nextPage: number) {
     setPage(nextPage)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }

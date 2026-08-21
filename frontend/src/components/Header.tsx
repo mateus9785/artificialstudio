@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, type CSSProperties } from 'react'
 import { useLocation } from 'react-router-dom'
 import { Menu, X } from 'lucide-react'
 
@@ -11,8 +11,8 @@ export default function Header() {
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [activeSection, setActiveSection] = useState('home')
-  const navRefs = useRef({})
-  const [indicatorStyle, setIndicatorStyle] = useState({ opacity: 0 })
+  const navRefs = useRef<Record<string, HTMLAnchorElement | null>>({})
+  const [indicatorStyle, setIndicatorStyle] = useState<CSSProperties>({ opacity: 0 })
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20)
@@ -22,7 +22,7 @@ export default function Header() {
 
   useEffect(() => {
     if (!isHome) return
-    const sections = NAV_SECTION_IDS.map((id) => document.getElementById(id)).filter(Boolean)
+    const sections = NAV_SECTION_IDS.map((id) => document.getElementById(id)).filter((el): el is HTMLElement => Boolean(el))
     if (sections.length === 0) return
 
     const observer = new IntersectionObserver(
@@ -32,7 +32,7 @@ export default function Header() {
           .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0]
         if (visible) setActiveSection(visible.target.id)
       },
-      { rootMargin: '-40% 0px -50% 0px', threshold: [0, 0.25, 0.5, 0.75, 1] }
+      { rootMargin: '-40% 0px -50% 0px', threshold: [0, 0.25, 0.5, 0.75, 1] },
     )
 
     sections.forEach((section) => observer.observe(section))
@@ -50,14 +50,10 @@ export default function Header() {
     <header
       className="fixed top-0 left-0 right-0 z-50 transition-all duration-500"
       style={{
-        background: scrolled
-          ? 'rgba(5, 5, 5, 0.85)'
-          : 'transparent',
+        background: scrolled ? 'rgba(5, 5, 5, 0.85)' : 'transparent',
         backdropFilter: scrolled ? 'blur(20px)' : 'none',
         WebkitBackdropFilter: scrolled ? 'blur(20px)' : 'none',
-        borderBottom: scrolled
-          ? '1px solid rgba(255,255,255,0.05)'
-          : '1px solid transparent',
+        borderBottom: scrolled ? '1px solid rgba(255,255,255,0.05)' : '1px solid transparent',
       }}
     >
       <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
@@ -72,10 +68,7 @@ export default function Header() {
             fetchPriority="high"
             className="w-8 h-8 object-contain flex-shrink-0"
           />
-          <span
-            className="text-lg font-semibold tracking-tight"
-            style={{ color: '#f4f4f5', letterSpacing: '-0.3px' }}
-          >
+          <span className="text-lg font-semibold tracking-tight" style={{ color: '#f4f4f5', letterSpacing: '-0.3px' }}>
             Artificial<span className="gradient-text">Studio</span>
           </span>
         </a>
@@ -88,12 +81,14 @@ export default function Header() {
             return (
               <a
                 key={item}
-                ref={(el) => { navRefs.current[id] = el }}
+                ref={(el) => {
+                  navRefs.current[id] = el
+                }}
                 href={isHome ? `#${id}` : `/#${id}`}
                 className="text-sm transition-colors duration-200"
                 style={{ color: isActive ? '#22d3ee' : '#a1a1aa' }}
-                onMouseEnter={(e) => (e.target.style.color = '#22d3ee')}
-                onMouseLeave={(e) => (e.target.style.color = isActive ? '#22d3ee' : '#a1a1aa')}
+                onMouseEnter={(e) => (e.currentTarget.style.color = '#22d3ee')}
+                onMouseLeave={(e) => (e.currentTarget.style.color = isActive ? '#22d3ee' : '#a1a1aa')}
               >
                 {item}
               </a>
@@ -104,8 +99,8 @@ export default function Header() {
             href="/sobre"
             className="text-sm transition-colors duration-200"
             style={{ color: '#a1a1aa' }}
-            onMouseEnter={(e) => (e.target.style.color = '#22d3ee')}
-            onMouseLeave={(e) => (e.target.style.color = '#a1a1aa')}
+            onMouseEnter={(e) => (e.currentTarget.style.color = '#22d3ee')}
+            onMouseLeave={(e) => (e.currentTarget.style.color = '#a1a1aa')}
           >
             Sobre
           </a>

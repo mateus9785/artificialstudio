@@ -1,13 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
 import Header from './components/Header'
 import Footer from './components/Footer'
 import WhatsAppButton from './components/WhatsAppButton'
 import CookieConsent from './components/CookieConsent'
-import { getStoredConsent, initTrackingScripts } from './lib/analytics'
+import { getStoredConsent, initTrackingScripts, type ConsentPreferences } from './lib/analytics'
 
-export default function Layout({ children }) {
-  const [consent, setConsent] = useState(() => getStoredConsent())
+export default function Layout({ children }: { children: ReactNode }) {
+  const [consent, setConsent] = useState<ConsentPreferences | null>(() => getStoredConsent())
   const { hash } = useLocation()
 
   useEffect(() => {

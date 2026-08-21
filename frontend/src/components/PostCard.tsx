@@ -2,27 +2,28 @@ import { Link } from 'react-router-dom'
 import { TrendingUp } from 'lucide-react'
 import { API_URL } from '../lib/api'
 import { hexToRgba } from '../lib/color'
+import type { Post } from '../lib/types'
 
-function resolveImageUrl(imageUrl) {
+function resolveImageUrl(imageUrl: string | null): string | null {
   if (!imageUrl) return null
   if (/^https?:\/\//.test(imageUrl)) return imageUrl
   return `${new URL(API_URL).origin}${imageUrl}`
 }
 
-const TAG_ICONS = {
+const TAG_ICONS: Record<string, string> = {
   'Inteligência Artificial': '🤖',
   'Marketing Digital': '📈',
   'Performance Web': '⚡',
   'Desenvolvimento de Software': '💻',
 }
 
-function formatDate(isoDate) {
+function formatDate(isoDate: string | null): string {
   if (!isoDate) return ''
   const date = new Date(isoDate)
   return new Intl.DateTimeFormat('pt-BR', { month: 'short', year: 'numeric' }).format(date)
 }
 
-export default function PostCard({ post }) {
+export default function PostCard({ post }: { post: Post }) {
   const gradient = `linear-gradient(135deg, ${hexToRgba(post.tagColor, 0.06)} 0%, ${hexToRgba(post.tagColor, 0.02)} 100%)`
   const image = resolveImageUrl(post.imageUrl)
 
@@ -65,10 +66,7 @@ export default function PostCard({ post }) {
               />
               {/* Icon */}
               <div className="absolute inset-0 flex items-center justify-center">
-                <div
-                  className="text-5xl opacity-20 select-none"
-                  style={{ filter: `drop-shadow(0 0 20px ${post.tagColor})` }}
-                >
+                <div className="text-5xl opacity-20 select-none" style={{ filter: `drop-shadow(0 0 20px ${post.tagColor})` }}>
                   {TAG_ICONS[post.tag] || '📝'}
                 </div>
               </div>
@@ -105,10 +103,7 @@ export default function PostCard({ post }) {
           </span>
 
           {/* Title */}
-          <h3
-            className="font-semibold mb-3 leading-snug"
-            style={{ color: '#d4d4d8', fontSize: '1rem', letterSpacing: '-0.2px' }}
-          >
+          <h3 className="font-semibold mb-3 leading-snug" style={{ color: '#d4d4d8', fontSize: '1rem', letterSpacing: '-0.2px' }}>
             {post.title}
           </h3>
 
@@ -122,10 +117,7 @@ export default function PostCard({ post }) {
             <span className="text-xs" style={{ color: '#3f3f46' }}>
               {formatDate(post.publishedAt)}
             </span>
-            <span
-              className="text-xs font-medium transition-colors duration-200"
-              style={{ color: post.tagColor }}
-            >
+            <span className="text-xs font-medium transition-colors duration-200" style={{ color: post.tagColor }}>
               Ler artigo →
             </span>
           </div>

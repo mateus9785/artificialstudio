@@ -1,4 +1,4 @@
-const FOOTER_LINKS = {
+const FOOTER_LINKS: Record<string, Array<{ label: string; href: string }>> = {
   Empresa: [
     { label: 'Sobre nós', href: '/sobre' },
     { label: 'Blog', href: '/#blog' },
@@ -40,10 +40,7 @@ export default function Footer() {
                 decoding="async"
                 className="w-8 h-8 object-contain flex-shrink-0"
               />
-              <span
-                className="text-lg font-semibold"
-                style={{ color: '#f4f4f5', letterSpacing: '-0.3px' }}
-              >
+              <span className="text-lg font-semibold" style={{ color: '#f4f4f5', letterSpacing: '-0.3px' }}>
                 Artificial
                 <span
                   style={{
@@ -78,8 +75,8 @@ export default function Footer() {
                       href={href}
                       className="text-sm transition-colors duration-200"
                       style={{ color: '#52525b' }}
-                      onMouseEnter={(e) => (e.target.style.color = '#a1a1aa')}
-                      onMouseLeave={(e) => (e.target.style.color = '#52525b')}
+                      onMouseEnter={(e) => (e.currentTarget.style.color = '#a1a1aa')}
+                      onMouseLeave={(e) => (e.currentTarget.style.color = '#52525b')}
                     >
                       {label}
                     </a>
