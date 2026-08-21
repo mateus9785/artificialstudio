@@ -1,4 +1,5 @@
-import { pool } from '../db/pool.js'
+import { pool } from '../db/pool.ts'
+import type { ExtractedQuote } from './quoteExtractor.ts'
 
 /**
  * `kanban_labels.name` é validado por `^[A-Za-z0-9._-]+$` em kanban.routes.js — nada de acento nem
@@ -7,30 +8,39 @@ import { pool } from '../db/pool.js'
 const LABEL_NAME = (process.env.AI_CHAT_LABEL || 'cliente').replace(/[^A-Za-z0-9._-]/g, '-')
 const LABEL_COLOR = '#a855f7'
 
-async function ensureLabel() {
-  const [existing] = await pool.query('SELECT id FROM kanban_labels WHERE name = ?', [LABEL_NAME])
-  if (existing[0]) return existing[0].id
-
-  const [result] = await pool.query('INSERT INTO kanban_labels (name, color) VALUES (?, ?)', [LABEL_NAME, LABEL_COLOR])
-  return result.insertId
+interface ConversationRef {
+  id: number
 }
 
-function money(value) {
+interface CreateCardOptions {
+  originLabel?: string | null
+}
+
+async function ensureLabel(): Promise<number> {
+  const [existing] = await pool.query('SELECT id FROM kanban_labels WHERE name = ?', [LABEL_NAME])
+  const existingRow = (existing as Array<{ id: number }>)[0]
+  if (existingRow) return existingRow.id
+
+  const [result] = await pool.query('INSERT INTO kanban_labels (name, color) VALUES (?, ?)', [LABEL_NAME, LABEL_COLOR])
+  return (result as { insertId: number }).insertId
+}
+
+function money(value: number | null | undefined): string | null {
   if (value === null || value === undefined) return null
   return Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
-function priceLine(quote) {
+function priceLine(quote: ExtractedQuote): string {
   const min = money(quote.priceMin)
   const max = money(quote.priceMax)
   if (!min && !max) return 'não registrado'
-  if (!max || min === max) return min || max
+  if (!max || min === max) return (min || max) as string
   return `${min} a ${max}`
 }
 
-function buildDescription(quote, conversation, originLabel) {
-  const bloco = (titulo, corpo) => (corpo ? `## ${titulo}\n\n${corpo}\n` : '')
-  const lista = (items) => (items?.length ? items.map((item) => `- ${item}`).join('\n') : '')
+function buildDescription(quote: ExtractedQuote, conversation: ConversationRef, originLabel?: string | null): string {
+  const bloco = (titulo: string, corpo: string | null | undefined): string => (corpo ? `## ${titulo}\n\n${corpo}\n` : '')
+  const lista = (items: string[] | null | undefined): string => (items?.length ? items.map((item) => `- ${item}`).join('\n') : '')
 
   const comercial = [
     `- Cliente: ${quote.clientName || 'não informado'}`,
@@ -69,7 +79,11 @@ function buildDescription(quote, conversation, originLabel) {
  * "confirmo" digitado no chat por um visitante anônimo não pode disparar uma sessão de
  * desenvolvimento sozinha. Quem arma é o humano, pela tela.
  */
-export async function createCardFromQuote(quote, conversation, { originLabel } = {}) {
+export async function createCardFromQuote(
+  quote: ExtractedQuote,
+  conversation: ConversationRef,
+  { originLabel }: CreateCardOptions = {},
+): Promise<number> {
   const labelId = await ensureLabel()
   const title = `${quote.projectName}${quote.companyName ? ` — ${quote.companyName}` : ''}`.slice(0, 255)
 
@@ -78,5 +92,5 @@ export async function createCardFromQuote(quote, conversation, { originLabel } =
     [title, buildDescription(quote, conversation, originLabel), labelId],
   )
 
-  return result.insertId
+  return (result as { insertId: number }).insertId
 }

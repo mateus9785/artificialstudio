@@ -1,8 +1,17 @@
 import bcrypt from 'bcryptjs'
 import 'dotenv/config'
-import { pool } from './pool.js'
+import { pool } from './pool.ts'
 
-const SEED_POSTS = [
+interface SeedPost {
+  title: string
+  excerpt: string
+  tag: string
+  tag_color: string
+  trending: boolean
+  published_at: string
+}
+
+const SEED_POSTS: SeedPost[] = [
   {
     title: 'Como as IAs de atendimento estão engolindo os formulários estáticos',
     excerpt:
@@ -32,7 +41,7 @@ const SEED_POSTS = [
   },
 ]
 
-async function seed() {
+async function seed(): Promise<void> {
   const username = process.env.ADMIN_SEED_USERNAME
   const password = process.env.ADMIN_SEED_PASSWORD
 
@@ -43,7 +52,7 @@ async function seed() {
   const connection = await pool.getConnection()
   try {
     const [existingAdmins] = await connection.query('SELECT id FROM admins WHERE username = ?', [username])
-    if (existingAdmins.length === 0) {
+    if ((existingAdmins as unknown[]).length === 0) {
       const passwordHash = await bcrypt.hash(password, 10)
       await connection.query('INSERT INTO admins (username, password_hash) VALUES (?, ?)', [username, passwordHash])
       console.log(`Admin "${username}" criado.`)
@@ -52,7 +61,8 @@ async function seed() {
     }
 
     const [existingPosts] = await connection.query('SELECT COUNT(*) AS count FROM posts')
-    if (existingPosts[0].count === 0) {
+    const postCount = (existingPosts as Array<{ count: number }>)[0].count
+    if (postCount === 0) {
       for (const post of SEED_POSTS) {
         await connection.query(
           `INSERT INTO posts (title, excerpt, tag, tag_color, trending, published_at)

@@ -10,9 +10,11 @@ import {
   downloadMediaMessage,
   fetchLatestBaileysVersion,
   Browsers,
+  type WAMessage,
+  type WAVersion,
 } from 'baileys'
-import { pool } from '../db/pool.js'
-import { enqueueSuggestion } from './waSuggestionWorker.js'
+import { pool } from '../db/pool.ts'
+import { enqueueSuggestion } from './waSuggestionWorker.ts'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const SESSION_DIR = path.join(__dirname, '../../whatsapp-session')
@@ -21,16 +23,46 @@ const MEDIA_DIR = path.join(__dirname, '../../uploads/whatsapp-media')
 const logger = pino({ level: 'warn' })
 
 const MAX_RECONNECT_DELAY_MS = 30_000
-const MEDIA_MESSAGE_TYPES = ['imageMessage', 'videoMessage', 'audioMessage', 'documentMessage', 'stickerMessage']
+const MEDIA_MESSAGE_TYPES = ['imageMessage', 'videoMessage', 'audioMessage', 'documentMessage', 'stickerMessage'] as const
+type MediaMessageType = (typeof MEDIA_MESSAGE_TYPES)[number]
 
 // Backfill de historico sob demanda (botao "buscar historico completo" do painel).
 const BACKFILL_BATCH_SIZE = 50
 const BACKFILL_MAX_BATCHES = 20
 const BACKFILL_POLL_INTERVAL_MS = 1000
 const BACKFILL_POLL_TIMEOUT_MS = 20_000
-const backfillingJids = new Set()
+const backfillingJids = new Set<string>()
 
-function delay(ms) {
+type ConnectionStatus = 'disconnected' | 'pending_auth' | 'connected'
+type WASocketInstance = ReturnType<typeof makeWASocket>
+
+interface ContactRow {
+  id: number
+  external_jid: string
+  display_name: string | null
+  avatar_url: string | null
+  phone_number: string | null
+}
+
+interface ConversationRow {
+  id: number
+  contact_id: number
+  started_by: 'admin' | 'contact'
+  last_message_at: Date | null
+  last_message_preview: string | null
+  unread_count: number
+  status: string
+  ai_enabled: boolean
+  collected_data: unknown
+}
+
+interface Attachment {
+  type: string
+  url: string | null
+  mimeType: string | undefined
+}
+
+function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
@@ -41,14 +73,14 @@ function delay(ms) {
  * Socket.io) e uma única conta (sem multi-tenant, sem reconciliação de alias
  * @lid/telefone). Grupos (@g.us) seguem fora de escopo, igual ao original.
  */
-let socket = null
-let status = 'disconnected'
+let socket: WASocketInstance | null = null
+let status: ConnectionStatus = 'disconnected'
 let reconnectAttempts = 0
-let qrData = null
-const avatarUrlCache = new Map()
+let qrData: string | null = null
+const avatarUrlCache = new Map<string, string | undefined>()
 
-let cachedVersion
-async function getWaVersion() {
+let cachedVersion: WAVersion | undefined
+async function getWaVersion(): Promise<WAVersion | undefined> {
   if (cachedVersion) return cachedVersion
   try {
     const { version } = await fetchLatestBaileysVersion()
@@ -60,7 +92,7 @@ async function getWaVersion() {
   }
 }
 
-function jidToPhoneNumber(jid) {
+function jidToPhoneNumber(jid: string | null | undefined): string | undefined {
   if (!jid) return undefined
   return jid.split('@')[0].split(':')[0]
 }
@@ -71,7 +103,7 @@ function jidToPhoneNumber(jid) {
  * portao entrariam contatos pessoais e visitantes do site (que o dono atende
  * direto no aplicativo, sem IA). O painel e a IA vendedora sao exclusivos da
  * prospeccao. */
-async function isKnownLeadPhone(phoneDigits) {
+async function isKnownLeadPhone(phoneDigits: string | null | undefined): Promise<boolean> {
   if (!phoneDigits) return false
   const [rows] = await pool.query(
     `SELECT 1 FROM scout_prospects
@@ -79,10 +111,10 @@ async function isKnownLeadPhone(phoneDigits) {
      LIMIT 1`,
     [phoneDigits],
   )
-  return rows.length > 0
+  return (rows as unknown[]).length > 0
 }
 
-function extractText(msg) {
+function extractText(msg: WAMessage): string | undefined {
   const m = msg.message
   if (!m) return undefined
   return (
@@ -95,7 +127,7 @@ function extractText(msg) {
   )
 }
 
-function mediaKeyToType(key) {
+function mediaKeyToType(key: MediaMessageType): string {
   switch (key) {
     case 'imageMessage':
       return 'image'
@@ -110,7 +142,14 @@ function mediaKeyToType(key) {
   }
 }
 
-async function setConnectionState({ status: nextStatus, qrData: nextQr, phoneNumber, connectedAt }) {
+interface SetConnectionStateParams {
+  status: ConnectionStatus
+  qrData?: string | null
+  phoneNumber?: string | null
+  connectedAt?: Date | null
+}
+
+async function setConnectionState({ status: nextStatus, qrData: nextQr, phoneNumber, connectedAt }: SetConnectionStateParams): Promise<void> {
   await pool.query(
     `INSERT INTO whatsapp_connection (id, status, qr_data, phone_number, last_connected_at)
      VALUES (1, ?, ?, ?, ?)
@@ -123,7 +162,14 @@ async function setConnectionState({ status: nextStatus, qrData: nextQr, phoneNum
   )
 }
 
-async function upsertContact({ jid, displayName, avatarUrl, phoneNumber }) {
+interface UpsertContactParams {
+  jid: string
+  displayName?: string | null
+  avatarUrl?: string | undefined
+  phoneNumber?: string | null
+}
+
+async function upsertContact({ jid, displayName, avatarUrl, phoneNumber }: UpsertContactParams): Promise<ContactRow> {
   await pool.query(
     `INSERT INTO whatsapp_contacts (external_jid, display_name, avatar_url, phone_number)
      VALUES (?, ?, ?, ?)
@@ -134,15 +180,25 @@ async function upsertContact({ jid, displayName, avatarUrl, phoneNumber }) {
     [jid, displayName ?? null, avatarUrl ?? null, phoneNumber ?? null, displayName ?? null, avatarUrl ?? null, phoneNumber ?? null],
   )
   const [rows] = await pool.query('SELECT * FROM whatsapp_contacts WHERE external_jid = ?', [jid])
-  return rows[0]
+  return (rows as ContactRow[])[0]
+}
+
+interface MessageMeta {
+  sentAt: Date
+  preview: string
+  direction: 'inbound' | 'outbound'
 }
 
 /** Upsert da conversa 1:1 do contato — replica a lógica de messageIngestService.ts do
  * ominichain (não deixa uma mensagem de history-sync mais antiga sobrescrever o preview/
  * unread de uma mensagem live mais recente que já tenha chegado). */
-async function upsertConversationForMessage(contact, { sentAt, preview, direction }, { isHistory }) {
+async function upsertConversationForMessage(
+  contact: ContactRow,
+  { sentAt, preview, direction }: MessageMeta,
+  { isHistory }: { isHistory: boolean },
+): Promise<ConversationRow> {
   const [existingRows] = await pool.query('SELECT * FROM whatsapp_conversations WHERE contact_id = ?', [contact.id])
-  const existing = existingRows[0]
+  const existing = (existingRows as ConversationRow[])[0]
   const isNewestKnown = !existing || !existing.last_message_at || sentAt > existing.last_message_at
   const bumpUnread = direction === 'inbound' && !isHistory
 
@@ -152,12 +208,12 @@ async function upsertConversationForMessage(contact, { sentAt, preview, directio
        VALUES (?, ?, ?, ?, ?)`,
       [contact.id, direction === 'outbound' ? 'admin' : 'contact', sentAt, preview, bumpUnread ? 1 : 0],
     )
-    const [rows] = await pool.query('SELECT * FROM whatsapp_conversations WHERE id = ?', [result.insertId])
-    return rows[0]
+    const [rows] = await pool.query('SELECT * FROM whatsapp_conversations WHERE id = ?', [(result as { insertId: number }).insertId])
+    return (rows as ConversationRow[])[0]
   }
 
-  const sets = []
-  const params = []
+  const sets: string[] = []
+  const params: unknown[] = []
   if (isNewestKnown) {
     sets.push('last_message_at = ?', 'last_message_preview = ?')
     params.push(sentAt, preview)
@@ -167,10 +223,28 @@ async function upsertConversationForMessage(contact, { sentAt, preview, directio
     await pool.query(`UPDATE whatsapp_conversations SET ${sets.join(', ')} WHERE id = ?`, [...params, existing.id])
   }
   const [rows] = await pool.query('SELECT * FROM whatsapp_conversations WHERE id = ?', [existing.id])
-  return rows[0]
+  return (rows as ConversationRow[])[0]
 }
 
-async function insertMessage({ conversationId, direction, status: messageStatus, externalMessageId, text, attachment, sentAt }) {
+interface InsertMessageParams {
+  conversationId: number
+  direction: 'inbound' | 'outbound'
+  status: 'delivered' | 'sent'
+  externalMessageId?: string | null
+  text?: string | null
+  attachment?: Attachment | null
+  sentAt: Date
+}
+
+async function insertMessage({
+  conversationId,
+  direction,
+  status: messageStatus,
+  externalMessageId,
+  text,
+  attachment,
+  sentAt,
+}: InsertMessageParams): Promise<number | null> {
   try {
     const [result] = await pool.query(
       `INSERT INTO whatsapp_messages
@@ -188,20 +262,20 @@ async function insertMessage({ conversationId, direction, status: messageStatus,
         sentAt,
       ],
     )
-    return result.insertId
+    return (result as { insertId: number }).insertId
   } catch (err) {
     // Já ingerida (mesmo external_message_id nesta conversa) — idempotente, inclusive
     // para o eco do próprio WhatsApp de uma mensagem que enviamos pelo painel.
-    if (err.code === 'ER_DUP_ENTRY') return null
+    if ((err as { code?: string }).code === 'ER_DUP_ENTRY') return null
     throw err
   }
 }
 
-async function getContactAvatarUrl(jid) {
+async function getContactAvatarUrl(jid: string): Promise<string | undefined> {
   if (avatarUrlCache.has(jid)) return avatarUrlCache.get(jid)
-  let url
+  let url: string | undefined
   try {
-    url = await socket.profilePictureUrl(jid, 'image')
+    url = (await socket?.profilePictureUrl(jid, 'image')) ?? undefined
   } catch {
     url = undefined // sem foto, ou bloqueado pela privacidade do contato
   }
@@ -209,23 +283,24 @@ async function getContactAvatarUrl(jid) {
   return url
 }
 
-async function saveMediaAttachment(msg, mediaKey) {
-  const mediaContent = msg.message[mediaKey]
+async function saveMediaAttachment(msg: WAMessage, mediaKey: MediaMessageType): Promise<Attachment> {
+  const mediaContent = msg.message?.[mediaKey]
   const type = mediaKeyToType(mediaKey)
   try {
-    const buffer = await downloadMediaMessage(msg, 'buffer', {}, { logger, reuploadRequest: socket.updateMediaMessage })
-    const ext = mediaContent?.mimetype?.split('/')[1]?.split(';')[0] || 'bin'
+    const buffer = (await downloadMediaMessage(msg, 'buffer', {}, { logger, reuploadRequest: socket!.updateMediaMessage })) as Buffer
+    const mimetype = (mediaContent as { mimetype?: string } | undefined)?.mimetype
+    const ext = mimetype?.split('/')[1]?.split(';')[0] || 'bin'
     const filename = `${msg.key.id || crypto.randomUUID()}.${ext}`
     await mkdir(MEDIA_DIR, { recursive: true })
     await writeFile(path.join(MEDIA_DIR, filename), buffer)
-    return { type, url: `/uploads/whatsapp-media/${filename}`, mimeType: mediaContent?.mimetype }
+    return { type, url: `/uploads/whatsapp-media/${filename}`, mimeType: mimetype }
   } catch (err) {
     logger.error({ err }, 'failed to download whatsapp media, ingesting without attachment')
     return { type, url: null, mimeType: undefined }
   }
 }
 
-async function ingestOne(msg, { isHistory = false } = {}) {
+async function ingestOne(msg: WAMessage, { isHistory = false }: { isHistory?: boolean } = {}): Promise<void> {
   const remoteJid = msg.key.remoteJid ?? undefined
   if (!remoteJid) return
   if (remoteJid.endsWith('@g.us') || remoteJid === 'status@broadcast') return // grupos/status: fora de escopo
@@ -240,7 +315,7 @@ async function ingestOne(msg, { isHistory = false } = {}) {
   const timestampSeconds = Number(msg.messageTimestamp ?? 0)
   const sentAt = timestampSeconds > 0 ? new Date(timestampSeconds * 1000) : new Date()
   const fromMe = Boolean(msg.key.fromMe)
-  const direction = fromMe ? 'outbound' : 'inbound'
+  const direction: 'inbound' | 'outbound' = fromMe ? 'outbound' : 'inbound'
 
   const contact = await upsertContact({
     jid: remoteJid,
@@ -272,7 +347,7 @@ async function ingestOne(msg, { isHistory = false } = {}) {
   }
 }
 
-async function handleMessagesUpsert(upsert) {
+async function handleMessagesUpsert(upsert: { messages: WAMessage[]; type: string }): Promise<void> {
   if (upsert.type !== 'notify') return // pula replays de history-sync na reconexão
   for (const msg of upsert.messages) {
     try {
@@ -286,7 +361,7 @@ async function handleMessagesUpsert(upsert) {
 /** Disparado uma vez, logo após um QR novo (syncFullHistory: true abaixo), com o
  * histórico de conversas do número. Mensagens chegam da mais nova para a mais antiga —
  * processadas na ordem inversa para caírem no mesmo funil das mensagens live. */
-async function handleHistorySync({ messages }) {
+async function handleHistorySync({ messages }: { messages: WAMessage[] }): Promise<void> {
   for (const msg of [...messages].reverse()) {
     try {
       await ingestOne(msg, { isHistory: true })
@@ -296,7 +371,13 @@ async function handleHistorySync({ messages }) {
   }
 }
 
-async function getOldestMessageAnchor(jid) {
+interface MessageAnchor {
+  id: string
+  direction: 'inbound' | 'outbound'
+  sentAt: Date
+}
+
+async function getOldestMessageAnchor(jid: string): Promise<MessageAnchor | null> {
   const [rows] = await pool.query(
     `SELECT m.external_message_id AS id, m.direction, m.sent_at AS sentAt
      FROM whatsapp_messages m
@@ -307,10 +388,10 @@ async function getOldestMessageAnchor(jid) {
      LIMIT 1`,
     [jid],
   )
-  return rows[0] || null
+  return (rows as MessageAnchor[])[0] || null
 }
 
-export function isBackfillRunning(jid) {
+export function isBackfillRunning(jid: string): boolean {
   return backfillingJids.has(jid)
 }
 
@@ -323,7 +404,7 @@ export function isBackfillRunning(jid) {
  * puxando cada vez mais pra trás até a mensagem mais antiga parar de mudar (sinal
  * de que acabou o histórico do lado do WhatsApp) ou bater o limite de tentativas.
  */
-export async function backfillConversationHistory(jid) {
+export async function backfillConversationHistory(jid: string): Promise<{ fetchedBatches: number; alreadyRunning?: boolean }> {
   if (!socket || status !== 'connected') {
     throw new Error('WhatsApp não está conectado')
   }
@@ -343,7 +424,7 @@ export async function backfillConversationHistory(jid) {
       )
 
       const deadline = Date.now() + BACKFILL_POLL_TIMEOUT_MS
-      let next = anchor
+      let next: MessageAnchor | null = anchor
       while (Date.now() < deadline) {
         await delay(BACKFILL_POLL_INTERVAL_MS)
         next = await getOldestMessageAnchor(jid)
@@ -360,7 +441,15 @@ export async function backfillConversationHistory(jid) {
   }
 }
 
-async function handleConnectionUpdate(update) {
+interface ConnectionUpdate {
+  qr?: string
+  connection?: 'close' | 'connecting' | 'open'
+  lastDisconnect?: {
+    error?: { output?: { statusCode?: number }; message?: string }
+  }
+}
+
+async function handleConnectionUpdate(update: ConnectionUpdate): Promise<void> {
   if (update.qr) {
     status = 'pending_auth'
     qrData = update.qr
@@ -374,7 +463,7 @@ async function handleConnectionUpdate(update) {
     await setConnectionState({
       status,
       qrData: null,
-      phoneNumber: jidToPhoneNumber(socket.user?.id),
+      phoneNumber: jidToPhoneNumber(socket?.user?.id) ?? null,
       connectedAt: new Date(),
     })
   }
@@ -395,20 +484,17 @@ async function handleConnectionUpdate(update) {
 
     status = 'disconnected'
     await setConnectionState({ status })
-    const delay = Math.min(MAX_RECONNECT_DELAY_MS, 1000 * 2 ** reconnectAttempts)
+    const reconnectDelay = Math.min(MAX_RECONNECT_DELAY_MS, 1000 * 2 ** reconnectAttempts)
     reconnectAttempts += 1
     setTimeout(() => {
       void startSocket()
-    }, delay)
+    }, reconnectDelay)
   }
 }
 
-async function startSocket() {
+async function startSocket(): Promise<void> {
   await mkdir(SESSION_DIR, { recursive: true })
-  const [{ state: authState, saveCreds }, version] = await Promise.all([
-    useMultiFileAuthState(SESSION_DIR),
-    getWaVersion(),
-  ])
+  const [{ state: authState, saveCreds }, version] = await Promise.all([useMultiFileAuthState(SESSION_DIR), getWaVersion()])
 
   socket = makeWASocket({
     auth: authState,
@@ -429,7 +515,7 @@ async function startSocket() {
  * em disco (sobrevive a redeploys porque `backend/whatsapp-session/` está no
  * .gitignore e o deploy só faz `git reset --hard`, sem `git clean`). Sem sessão salva,
  * espera o admin clicar em "Conectar" na tela para então gerar o QR. */
-export async function initWhatsAppClient() {
+export async function initWhatsAppClient(): Promise<void> {
   try {
     const files = await readdir(SESSION_DIR)
     if (files.length > 0) await startSocket()
@@ -438,12 +524,12 @@ export async function initWhatsAppClient() {
   }
 }
 
-export async function connectWhatsApp() {
+export async function connectWhatsApp(): Promise<void> {
   if (socket && (status === 'connected' || status === 'pending_auth')) return
   await startSocket()
 }
 
-export async function disconnectWhatsApp() {
+export async function disconnectWhatsApp(): Promise<void> {
   if (socket) {
     try {
       await socket.logout()
@@ -462,29 +548,39 @@ export async function disconnectWhatsApp() {
  * chegado antes — usado pelo painel de leads do pegasus-scout (POST
  * /admin/scout/leads/:id/start-conversation) para abrir uma conversa vazia, pronta
  * para o admin revisar um rascunho e enviar manualmente. Não manda nada sozinho. */
-export async function getOrCreateConversationByPhone(phoneE164, { displayName } = {}) {
+export async function getOrCreateConversationByPhone(
+  phoneE164: string,
+  { displayName }: { displayName?: string | null } = {},
+): Promise<ConversationRow> {
   const digits = String(phoneE164).replace(/\D/g, '')
   const jid = `${digits}@s.whatsapp.net`
 
   const contact = await upsertContact({ jid, displayName, avatarUrl: undefined, phoneNumber: digits })
 
   const [existingRows] = await pool.query('SELECT * FROM whatsapp_conversations WHERE contact_id = ?', [contact.id])
-  if (existingRows[0]) return existingRows[0]
+  const existing = (existingRows as ConversationRow[])[0]
+  if (existing) return existing
 
   const [result] = await pool.query(
     "INSERT INTO whatsapp_conversations (contact_id, started_by, last_message_at, last_message_preview, unread_count) VALUES (?, 'admin', NULL, NULL, 0)",
     [contact.id],
   )
-  const [rows] = await pool.query('SELECT * FROM whatsapp_conversations WHERE id = ?', [result.insertId])
-  return rows[0]
+  const [rows] = await pool.query('SELECT * FROM whatsapp_conversations WHERE id = ?', [(result as { insertId: number }).insertId])
+  return (rows as ConversationRow[])[0]
 }
 
-export async function sendWhatsAppMessage(jid, { text, imageBase64, imageMimeType }) {
+interface SendMessageOptions {
+  text?: string | null
+  imageBase64?: string | null
+  imageMimeType?: string | null
+}
+
+export async function sendWhatsAppMessage(jid: string, { text, imageBase64, imageMimeType }: SendMessageOptions): Promise<string | null> {
   if (!socket || status !== 'connected') {
     throw new Error('WhatsApp não está conectado')
   }
   const content = imageBase64
-    ? { image: Buffer.from(imageBase64, 'base64'), caption: text, mimetype: imageMimeType }
+    ? { image: Buffer.from(imageBase64, 'base64'), caption: text ?? undefined, mimetype: imageMimeType ?? undefined }
     : { text: text ?? '' }
   const sent = await socket.sendMessage(jid, content)
   return sent?.key?.id ?? null
@@ -493,7 +589,7 @@ export async function sendWhatsAppMessage(jid, { text, imageBase64, imageMimeTyp
 /** Revoga no WhatsApp ("apagar para todos") — só funciona para mensagens que nós
  * enviamos e dentro da janela de revogação do WhatsApp. Best-effort: quem chama já
  * marcou a mensagem como apagada no nosso lado independente do resultado disso. */
-export async function deleteWhatsAppMessage(jid, externalMessageId) {
+export async function deleteWhatsAppMessage(jid: string, externalMessageId: string): Promise<void> {
   if (!socket || status !== 'connected') return
   await socket.sendMessage(jid, { delete: { remoteJid: jid, id: externalMessageId, fromMe: true } })
 }

@@ -1,6 +1,6 @@
 const DIACRITICS_REGEX = new RegExp('[\\u0300-\\u036f]', 'g')
 
-export function slugify(text) {
+export function slugify(text: string | null | undefined): string {
   return (text || '')
     .toString()
     .normalize('NFD')

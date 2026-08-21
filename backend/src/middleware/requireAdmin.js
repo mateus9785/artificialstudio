@@ -1,4 +1,4 @@
-import { verifyAdminToken } from '../utils/jwt.js'
+import { verifyAdminToken } from '../utils/jwt.ts'
 
 export function requireAdmin(req, res, next) {
   const header = req.headers.authorization || ''

@@ -1,8 +1,8 @@
 import 'dotenv/config'
 import { app } from './app.js'
-import { startAiChatWorker } from './services/aiChatWorker.js'
-import { startWaSuggestionWorker } from './services/waSuggestionWorker.js'
-import { initWhatsAppClient } from './services/whatsappClient.js'
+import { startAiChatWorker } from './services/aiChatWorker.ts'
+import { startWaSuggestionWorker } from './services/waSuggestionWorker.ts'
+import { initWhatsAppClient } from './services/whatsappClient.ts'
 
 const port = Number(process.env.PORT) || 4000
 

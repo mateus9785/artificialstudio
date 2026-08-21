@@ -1,8 +1,8 @@
-import { pool } from '../db/pool.js'
+import { pool } from '../db/pool.ts'
 import { promptFingerprint, runChatTurn, ClaudeNotInstalledError } from './claudeRunner.ts'
 import { ClaudeQueueFullError } from './claudeGate.ts'
-import { extractQuote } from './quoteExtractor.js'
-import { createCardFromQuote } from './projectCard.js'
+import { extractQuote } from './quoteExtractor.ts'
+import { createCardFromQuote } from './projectCard.ts'
 
 const POLL_MS = Number(process.env.AI_CHAT_POLL_MS) || 2000
 const MAX_ATTEMPTS = 2
@@ -17,14 +17,49 @@ export const AI_MARKERS = {
   confirmed: '[[ORCAMENTO_CONFIRMADO]]',
 }
 
+type QuoteStatus = 'presented' | 'confirmed'
+
+interface ConversationRow {
+  id: number
+  session_id: string
+  visitor_name: string | null
+  status: 'open' | 'closed'
+  mode: 'ai' | 'human'
+  claude_session_id: string | null
+  prompt_fingerprint: string | null
+  visitor_contact: string | null
+  quote_status: 'none' | QuoteStatus
+  created_at: Date
+  updated_at: Date
+}
+
+interface MessageRow {
+  id: number
+  sender: 'visitor' | 'ai' | 'admin'
+  text: string
+}
+
+interface AiJobRow {
+  id: number
+  conversation_id: number
+  trigger_message_id: number | null
+  kind: 'reply' | 'quote'
+  status: 'pending' | 'running' | 'done' | 'error'
+  attempts: number
+  error: string | null
+  created_at: Date
+  started_at: Date | null
+  finished_at: Date | null
+}
+
 /**
  * Separa os marcadores de controle do texto que o cliente lê.
  *
  * Aceita o marcador em qualquer linha (não só na última) porque o modelo às vezes o coloca antes de
  * uma despedida. O que não pode, em nenhuma hipótese, é o marcador chegar ao visitante.
  */
-export function splitMarkers(reply) {
-  let quoteStatus = null
+export function splitMarkers(reply: string): { text: string; quoteStatus: QuoteStatus | null } {
+  let quoteStatus: QuoteStatus | null = null
 
   if (reply.includes(AI_MARKERS.confirmed)) quoteStatus = 'confirmed'
   // "Apresentado" não sobrescreve "confirmado" se os dois vierem juntos: confirmar é o estado mais
@@ -45,22 +80,21 @@ export function splitMarkers(reply) {
   return { text, quoteStatus }
 }
 
-async function loadConversation(id) {
+async function loadConversation(id: number): Promise<ConversationRow | null> {
   const [rows] = await pool.query('SELECT * FROM chat_conversations WHERE id = ?', [id])
-  return rows[0] || null
+  return (rows as ConversationRow[])[0] || null
 }
 
-function renderTranscript(messages) {
-  const label = { visitor: 'cliente', ai: 'atendente', admin: 'atendente (humano)' }
+function renderTranscript(messages: MessageRow[]): string {
+  const label: Record<string, string> = { visitor: 'cliente', ai: 'atendente', admin: 'atendente (humano)' }
   return messages.map((m) => `${label[m.sender] || m.sender}: ${m.text}`).join('\n\n')
 }
 
-async function loadMessages(conversationId) {
-  const [rows] = await pool.query(
-    'SELECT id, sender, text FROM chat_messages WHERE conversation_id = ? ORDER BY id ASC',
-    [conversationId],
-  )
-  return rows
+async function loadMessages(conversationId: number): Promise<MessageRow[]> {
+  const [rows] = await pool.query('SELECT id, sender, text FROM chat_messages WHERE conversation_id = ? ORDER BY id ASC', [
+    conversationId,
+  ])
+  return rows as MessageRow[]
 }
 
 /**
@@ -70,7 +104,7 @@ async function loadMessages(conversationId) {
  * a última perderia contexto, e responder uma por uma geraria três respostas seguidas para a mesma
  * pergunta — os dois erros que a regra "responda a última mensagem" existe para evitar.
  */
-function splitPendingVisitorMessages(messages) {
+function splitPendingVisitorMessages(messages: MessageRow[]): { answered: MessageRow[]; visitorText: string } {
   let firstPending = messages.length
   while (firstPending > 0 && messages[firstPending - 1].sender === 'visitor') {
     firstPending -= 1
@@ -84,26 +118,28 @@ function splitPendingVisitorMessages(messages) {
   }
 }
 
-async function insertAiMessage(conversationId, text) {
-  const [result] = await pool.query(
-    'INSERT INTO chat_messages (conversation_id, sender, text, read_by_admin) VALUES (?, ?, ?, FALSE)',
-    [conversationId, 'ai', text.slice(0, 4000)],
-  )
+async function insertAiMessage(conversationId: number, text: string): Promise<number> {
+  const [result] = await pool.query('INSERT INTO chat_messages (conversation_id, sender, text, read_by_admin) VALUES (?, ?, ?, FALSE)', [
+    conversationId,
+    'ai',
+    text.slice(0, 4000),
+  ])
   await pool.query('UPDATE chat_conversations SET updated_at = NOW() WHERE id = ?', [conversationId])
-  return result.insertId
+  return (result as { insertId: number }).insertId
 }
 
-export async function enqueueJob(conversationId, kind, triggerMessageId = null) {
-  const [result] = await pool.query(
-    'INSERT INTO chat_ai_jobs (conversation_id, kind, trigger_message_id) VALUES (?, ?, ?)',
-    [conversationId, kind, triggerMessageId],
-  )
-  return result.insertId
+export async function enqueueJob(conversationId: number, kind: 'reply' | 'quote', triggerMessageId: number | null = null): Promise<number> {
+  const [result] = await pool.query('INSERT INTO chat_ai_jobs (conversation_id, kind, trigger_message_id) VALUES (?, ?, ?)', [
+    conversationId,
+    kind,
+    triggerMessageId,
+  ])
+  return (result as { insertId: number }).insertId
 }
 
 // ---- Execução dos jobs ----
 
-async function runReplyJob(job) {
+async function runReplyJob(job: AiJobRow): Promise<void> {
   const conversation = await loadConversation(job.conversation_id)
   if (!conversation) return
 
@@ -118,7 +154,7 @@ async function runReplyJob(job) {
   // Fingerprint diferente = CLAUDE.md/PRECOS.md/ROTEIRO.md mudaram desde que a sessão nasceu. A
   // sessão antiga continuaria respondendo pelas regras e preços velhos, então ela é descartada e o
   // histórico volta pelo prompt.
-  const reuseSession = conversation.claude_session_id && conversation.prompt_fingerprint === fingerprint
+  const reuseSession = Boolean(conversation.claude_session_id && conversation.prompt_fingerprint === fingerprint)
   const history = reuseSession || answered.length === 0 ? null : renderTranscript(answered)
 
   const turn = await runChatTurn({
@@ -159,21 +195,20 @@ async function runReplyJob(job) {
       "SELECT id FROM chat_ai_jobs WHERE conversation_id = ? AND kind = 'quote' AND status IN ('pending', 'running')",
       [job.conversation_id],
     )
-    if (existing.length === 0 && queued.length === 0) {
+    if ((existing as unknown[]).length === 0 && (queued as unknown[]).length === 0) {
       await enqueueJob(job.conversation_id, 'quote')
     }
   }
 }
 
-async function runQuoteJob(job) {
+async function runQuoteJob(job: AiJobRow): Promise<void> {
   const conversation = await loadConversation(job.conversation_id)
   if (!conversation) return
 
-  const [alreadyCarded] = await pool.query(
-    'SELECT id FROM chat_quotes WHERE conversation_id = ? AND kanban_card_id IS NOT NULL',
-    [job.conversation_id],
-  )
-  if (alreadyCarded.length > 0) return
+  const [alreadyCarded] = await pool.query('SELECT id FROM chat_quotes WHERE conversation_id = ? AND kanban_card_id IS NOT NULL', [
+    job.conversation_id,
+  ])
+  if ((alreadyCarded as unknown[]).length > 0) return
 
   const messages = await loadMessages(job.conversation_id)
   const quote = await extractQuote(renderTranscript(messages))
@@ -206,7 +241,7 @@ async function runQuoteJob(job) {
 
   await pool.query("UPDATE chat_quotes SET kanban_card_id = ?, status = 'card_created' WHERE id = ?", [
     cardId,
-    inserted.insertId,
+    (inserted as { insertId: number }).insertId,
   ])
   if (quote.contact) {
     await pool.query('UPDATE chat_conversations SET visitor_contact = ?, visitor_name = COALESCE(visitor_name, ?) WHERE id = ?', [
@@ -221,24 +256,23 @@ async function runQuoteJob(job) {
 
 // ---- Bomba de jobs ----
 
-async function claimNextJob() {
-  const [candidates] = await pool.query(
-    "SELECT id FROM chat_ai_jobs WHERE status = 'pending' ORDER BY id ASC LIMIT 1",
-  )
-  if (candidates.length === 0) return null
+async function claimNextJob(): Promise<AiJobRow | null> {
+  const [candidates] = await pool.query("SELECT id FROM chat_ai_jobs WHERE status = 'pending' ORDER BY id ASC LIMIT 1")
+  const candidateRows = candidates as Array<{ id: number }>
+  if (candidateRows.length === 0) return null
 
   const [claimed] = await pool.query(
     "UPDATE chat_ai_jobs SET status = 'running', started_at = NOW(), attempts = attempts + 1 WHERE id = ? AND status = 'pending'",
-    [candidates[0].id],
+    [candidateRows[0].id],
   )
-  if (claimed.affectedRows === 0) return null
+  if ((claimed as { affectedRows: number }).affectedRows === 0) return null
 
-  const [rows] = await pool.query('SELECT * FROM chat_ai_jobs WHERE id = ?', [candidates[0].id])
-  return rows[0]
+  const [rows] = await pool.query('SELECT * FROM chat_ai_jobs WHERE id = ?', [candidateRows[0].id])
+  return (rows as AiJobRow[])[0] || null
 }
 
-async function failJob(job, err) {
-  const message = String(err?.message || err).slice(0, 2000)
+async function failJob(job: AiJobRow, err: unknown): Promise<void> {
+  const message = String(err instanceof Error ? err.message : err).slice(0, 2000)
 
   // Fila cheia não é falha do job: é o servidor pedindo para tentar de novo daqui a pouco, sem
   // gastar uma tentativa nem incomodar o cliente.
@@ -253,10 +287,7 @@ async function failJob(job, err) {
     return
   }
 
-  await pool.query("UPDATE chat_ai_jobs SET status = 'error', error = ?, finished_at = NOW() WHERE id = ?", [
-    message,
-    job.id,
-  ])
+  await pool.query("UPDATE chat_ai_jobs SET status = 'error', error = ?, finished_at = NOW() WHERE id = ?", [message, job.id])
   console.error(`[ai-chat] job ${job.id} (${job.kind}) falhou: ${message}`)
 
   // Só o turno de conversa deixa alguém esperando do outro lado. A extração do orçamento falha em
@@ -269,7 +300,7 @@ async function failJob(job, err) {
 
 let running = false
 
-async function tick() {
+async function tick(): Promise<void> {
   if (running) return
   running = true
   try {
@@ -292,7 +323,7 @@ async function tick() {
   }
 }
 
-export function startAiChatWorker() {
+export function startAiChatWorker(): void {
   if (process.env.AI_CHAT_ENABLED === 'false') {
     console.log('[ai-chat] desligado por AI_CHAT_ENABLED=false — as mensagens ficam na fila.')
     return
@@ -303,8 +334,9 @@ export function startAiChatWorker() {
   pool
     .query("UPDATE chat_ai_jobs SET status = 'pending' WHERE status = 'running'")
     .then(([result]) => {
-      if (result.affectedRows > 0) {
-        console.log(`[ai-chat] ${result.affectedRows} job(s) interrompido(s) devolvido(s) para a fila.`)
+      const affectedRows = (result as { affectedRows: number }).affectedRows
+      if (affectedRows > 0) {
+        console.log(`[ai-chat] ${affectedRows} job(s) interrompido(s) devolvido(s) para a fila.`)
       }
     })
     .catch((err) => console.error('[ai-chat] falha ao recuperar jobs interrompidos:', err))

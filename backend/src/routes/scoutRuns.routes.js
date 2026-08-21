@@ -1,8 +1,8 @@
 import { Router } from 'express'
-import { pool } from '../db/pool.js'
+import { pool } from '../db/pool.ts'
 import { requireAdmin } from '../middleware/requireAdmin.js'
-import { getOrCreateConversationByPhone } from '../services/whatsappClient.js'
-import { enqueueSuggestion } from '../services/waSuggestionWorker.js'
+import { getOrCreateConversationByPhone } from '../services/whatsappClient.ts'
+import { enqueueSuggestion } from '../services/waSuggestionWorker.ts'
 
 export const scoutRunsRouter = Router()
 

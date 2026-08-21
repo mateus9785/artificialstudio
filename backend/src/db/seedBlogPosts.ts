@@ -1,8 +1,19 @@
 import 'dotenv/config'
-import { pool } from './pool.js'
-import { slugify } from '../utils/slug.js'
+import type { PoolConnection } from 'mysql2/promise'
+import { pool } from './pool.ts'
+import { slugify } from '../utils/slug.ts'
 
-const POSTS = [
+interface SeedBlogPost {
+  title: string
+  excerpt: string
+  tag: string
+  tagColor: string
+  trending: boolean
+  publishedAt: string
+  content: string
+}
+
+const POSTS: SeedBlogPost[] = [
   {
     title: 'Quanto Custa Desenvolver um Aplicativo ou Sistema Web? Entenda os Custos Reais e Invisíveis',
     excerpt:
@@ -278,24 +289,24 @@ Ter uma pontuação de 98+ no PageSpeed significa que você está oferecendo a m
   },
 ]
 
-async function ensureUniqueSlug(connection, baseSlug) {
+async function ensureUniqueSlug(connection: PoolConnection, baseSlug: string): Promise<string> {
   const base = slugify(baseSlug) || 'post'
   let slug = base
   let attempt = 1
   while (true) {
     const [rows] = await connection.query('SELECT id FROM posts WHERE slug = ?', [slug])
-    if (rows.length === 0) return slug
+    if ((rows as unknown[]).length === 0) return slug
     attempt += 1
     slug = `${base}-${attempt}`
   }
 }
 
-async function seedBlogPosts() {
+async function seedBlogPosts(): Promise<void> {
   const connection = await pool.getConnection()
   try {
     const [existing] = await connection.query('SELECT COUNT(*) AS count FROM posts')
     await connection.query('DELETE FROM posts')
-    console.log(`${existing[0].count} post(s) existente(s) removido(s).`)
+    console.log(`${(existing as Array<{ count: number }>)[0].count} post(s) existente(s) removido(s).`)
 
     for (const post of POSTS) {
       const slug = await ensureUniqueSlug(connection, post.title)
