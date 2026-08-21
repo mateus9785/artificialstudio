@@ -1,4 +1,4 @@
-import { runOneShot } from './claudeRunner.js'
+import { runOneShot } from './claudeRunner.ts'
 
 /**
  * Extração estruturada do orçamento a partir da transcrição.

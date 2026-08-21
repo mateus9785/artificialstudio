@@ -1,6 +1,6 @@
 import { pool } from '../db/pool.js'
-import { ClaudeNotInstalledError } from './claudeRunner.js'
-import { ClaudeQueueFullError } from './claudeGate.js'
+import { ClaudeNotInstalledError } from './claudeRunner.ts'
+import { ClaudeQueueFullError } from './claudeGate.ts'
 import { generateSuggestion } from './waSellerRunner.js'
 import { extractQuote } from './quoteExtractor.js'
 import { createCardFromQuote } from './projectCard.js'
