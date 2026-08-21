@@ -9,6 +9,7 @@
     "migrate": "node src/db/migrate.js",
     "seed": "node src/db/seed.js",
     "seed:posts": "node src/db/seedBlogPosts.js",
+    "lint": "oxlint .",
     "test:personas": "node --env-file-if-exists=.env scripts/test-personas.js",
     "test:personas:wa": "node --env-file-if-exists=.env scripts/test-personas-wa.js"
   },
@@ -25,5 +26,8 @@
     "nodemailer": "^6.9.15",
     "pino": "^9.4.0",
     "sharp": "^0.35.3"
+  },
+  "devDependencies": {
+    "oxlint": "^1.79.0"
   }
 }

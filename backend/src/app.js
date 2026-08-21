@@ -40,7 +40,10 @@ app.use('/api', financeiroRouter)
 app.use('/api', whatsappRouter)
 app.use('/api', scoutRunsRouter)
 
-app.use((err, req, res, next) => {
+// Express só reconhece isso como error handler pela aridade (4 parâmetros) —
+// `_next` não é usado, mas remover o parâmetro faria o Express tratar isso
+// como middleware normal e nunca chamar essa função em erros.
+app.use((err, req, res, _next) => {
   console.error(err)
   res.status(500).json({ error: 'Erro interno do servidor.' })
 })
