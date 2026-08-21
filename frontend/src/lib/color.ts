@@ -1,6 +1,12 @@
-export function hexToRgba(hex, alpha) {
+export function hexToRgba(hex: string, alpha: number): string {
   const clean = hex.replace('#', '')
-  const full = clean.length === 3 ? clean.split('').map((c) => c + c).join('') : clean
+  const full =
+    clean.length === 3
+      ? clean
+          .split('')
+          .map((c) => c + c)
+          .join('')
+      : clean
   const bigint = parseInt(full, 16)
   const r = (bigint >> 16) & 255
   const g = (bigint >> 8) & 255
