@@ -141,7 +141,7 @@ interface RunClaudeProcessOptions {
  * linha de comando do Windows. `claude -p` sem valor lê o prompt do stdin — comportamento
  * documentado do modo print, idêntico no Linux de produção.
  */
-function runClaudeProcess(args: string[], { cwd = CONTENT_DIR, stdinInput = null }: RunClaudeProcessOptions = {}): Promise<string> {
+function spawnClaudeProcessOnce(args: string[], { cwd = CONTENT_DIR, stdinInput = null }: RunClaudeProcessOptions = {}): Promise<string> {
   return new Promise<string>((resolve, reject) => {
     const child = spawn(IS_WINDOWS ? 'claude.cmd' : 'claude', args, {
       cwd,
@@ -196,6 +196,49 @@ function runClaudeProcess(args: string[], { cwd = CONTENT_DIR, stdinInput = null
     if (stdinInput !== null) child.stdin.write(stdinInput)
     child.stdin.end()
   })
+}
+
+/**
+ * `MAX_RETRIES=2` de propósito: além da tentativa original, mais 2 (3 no total). O gate já serializa
+ * (`MAX_CONCURRENT=1` em produção), então cada retry aqui atrasa a fila inteira — não dá pra ser
+ * generoso. Backoff exponencial (1s, 2s) em vez de fixo porque a causa mais provável de falha
+ * transitória é sobrecarga momentânea do host (mesma máquina do MySQL, ver claudeGate.ts), e um
+ * atraso crescente dá mais chance de ela passar antes da próxima tentativa.
+ */
+// `?? 2` em vez de `|| 2`: MAX_RETRIES=0 (desligar retry de propósito) é um valor válido, e `||`
+// trataria '0' como falsy e cairia no default — mesma armadilha que o resto do arquivo evita com
+// os nomes de env var prefixados (ver comentário de MODEL acima), só que aqui é o operador, não o
+// nome, que precisa ser o certo.
+const MAX_RETRIES = process.env.AI_CHAT_MAX_RETRIES !== undefined ? Number(process.env.AI_CHAT_MAX_RETRIES) : 2
+const RETRY_BASE_DELAY_MS =
+  process.env.AI_CHAT_RETRY_BASE_DELAY_MS !== undefined ? Number(process.env.AI_CHAT_RETRY_BASE_DELAY_MS) : 1000
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+/**
+ * `ClaudeNotInstalledError` nunca é retentado: se o binário não está no PATH agora, não vai
+ * aparecer sozinho 1s depois — é erro de configuração do host, não falha transitória. Todo o resto
+ * (timeout, saída não-zero) é tratado como potencialmente transitório.
+ */
+function isRetriable(err: unknown): boolean {
+  return !(err instanceof ClaudeNotInstalledError)
+}
+
+async function runClaudeProcess(args: string[], options: RunClaudeProcessOptions = {}): Promise<string> {
+  let lastError: unknown
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      return await spawnClaudeProcessOnce(args, options)
+    } catch (err) {
+      lastError = err
+      if (!isRetriable(err) || attempt === MAX_RETRIES) throw err
+      await sleep(RETRY_BASE_DELAY_MS * 2 ** attempt)
+    }
+  }
+  // Inalcançável — o loop sempre retorna ou lança antes de sair, mas o TS não modela isso.
+  throw lastError
 }
 
 interface ClaudeEnvelope {
