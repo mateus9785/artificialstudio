@@ -14,6 +14,7 @@
     "seed:posts": "node src/db/seedBlogPosts.js",
     "lint": "oxlint .",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
     "test:personas": "node --env-file-if-exists=.env scripts/test-personas.js",
     "test:personas:wa": "node --env-file-if-exists=.env scripts/test-personas-wa.js"
   },
@@ -27,13 +28,13 @@
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.2.0",
     "mysql2": "^3.11.3",
-    "nodemailer": "^6.9.15",
     "pino": "^9.4.0",
     "sharp": "^0.35.3"
   },
   "devDependencies": {
     "@types/node": "^26.2.0",
     "oxlint": "^1.79.0",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.11"
   }
 }
