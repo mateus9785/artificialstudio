@@ -14,23 +14,23 @@ import { runOneShot } from './claudeRunner.ts'
  * resposta — descartar um orçamento inteiro, bom, porque o nome do projeto veio com 210 caracteres
  * em vez de 200 seria perder uma venda por uma decisão arbitrária nossa.
  */
-function clip(value, max) {
+function clip(value: unknown, max: number): string | null {
   if (value === null || value === undefined) return null
   const text = String(value).trim()
   if (!text || text.toLowerCase() === 'null') return null
   return text.slice(0, max)
 }
 
-function clipList(value, maxItems, maxChars) {
+function clipList(value: unknown, maxItems: number, maxChars: number): string[] {
   if (!Array.isArray(value)) return []
   return value
     .slice(0, maxItems)
     .map((item) => clip(typeof item === 'object' ? JSON.stringify(item) : item, maxChars))
-    .filter(Boolean)
+    .filter((item): item is string => Boolean(item))
 }
 
 /** Aceita 18000, "18000", "R$ 18.000,00" e "18.000" — o modelo alterna entre as quatro formas. */
-function toMoney(value) {
+function toMoney(value: unknown): number | null {
   if (value === null || value === undefined || value === '') return null
   if (typeof value === 'number') return Number.isFinite(value) ? value : null
 
@@ -59,7 +59,7 @@ const SCHEMA_HINT = `{
   "briefing": "briefing tecnico em markdown para a equipe de desenvolvimento"
 }`
 
-function buildPrompt(transcript, retry) {
+function buildPrompt(transcript: string, retry: boolean): string {
   return `Voce esta lendo a transcricao de um atendimento comercial da Artificial Studio em que o cliente CONFIRMOU o orcamento. Extraia o que foi acordado.
 
 TRANSCRICAO
@@ -92,7 +92,7 @@ ATENCAO: a resposta anterior nao era um JSON valido. Responda SOMENTE com o obje
  * `result`, e esse texto às vezes vem embrulhado em cerca de código apesar da instrução. Recortar do
  * primeiro `{` ao último `}` resolve os dois casos.
  */
-export function extractJson(raw) {
+export function extractJson(raw: string): unknown {
   const start = raw.indexOf('{')
   const end = raw.lastIndexOf('}')
   if (start < 0 || end <= start) {
@@ -101,7 +101,41 @@ export function extractJson(raw) {
   return JSON.parse(raw.slice(start, end + 1))
 }
 
-function normalize(parsed) {
+interface RawExtractedQuote {
+  nome_do_projeto?: unknown
+  cliente?: unknown
+  empresa?: unknown
+  contato?: unknown
+  tipo_de_servico?: unknown
+  resumo?: unknown
+  requisitos?: unknown
+  integracoes?: unknown
+  valor_min?: unknown
+  valor_max?: unknown
+  mensalidade?: unknown
+  prazo_semanas?: unknown
+  condicoes_pagamento?: unknown
+  briefing?: unknown
+}
+
+export interface ExtractedQuote {
+  projectName: string
+  clientName: string | null
+  companyName: string | null
+  contact: string | null
+  serviceType: string | null
+  summary: string | null
+  requirements: string[]
+  integrations: string[]
+  priceMin: number | null
+  priceMax: number | null
+  monthly: number | null
+  timelineWeeks: string | null
+  paymentTerms: string | null
+  briefing: string | null
+}
+
+function normalize(parsed: RawExtractedQuote): ExtractedQuote {
   const min = toMoney(parsed.valor_min)
   const max = toMoney(parsed.valor_max)
 
@@ -132,17 +166,18 @@ function normalize(parsed) {
  * aspas não escapadas dentro de string longa é a falha mais comum aqui — e é muito mais barato
  * tentar de novo do que perder o card de um cliente que acabou de fechar.
  */
-export async function extractQuote(transcript) {
-  let lastError = null
+export async function extractQuote(transcript: string): Promise<ExtractedQuote> {
+  let lastError: unknown = null
 
   for (let attempt = 1; attempt <= 2; attempt += 1) {
     const raw = await runOneShot(buildPrompt(transcript, attempt > 1))
     try {
-      return normalize(extractJson(raw))
+      return normalize(extractJson(raw) as RawExtractedQuote)
     } catch (err) {
       lastError = err
     }
   }
 
-  throw new Error(`não foi possível extrair o orçamento: ${lastError?.message}`)
+  const message = lastError instanceof Error ? lastError.message : String(lastError)
+  throw new Error(`não foi possível extrair o orçamento: ${message}`)
 }

@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { pool } from '../db/pool.js'
+import { pool } from '../db/pool.ts'
 import { requireAdmin } from '../middleware/requireAdmin.js'
 import {
   connectWhatsApp,
@@ -8,8 +8,8 @@ import {
   deleteWhatsAppMessage,
   backfillConversationHistory,
   isBackfillRunning,
-} from '../services/whatsappClient.js'
-import { enqueueSuggestion, materializeWhatsAppQuote } from '../services/waSuggestionWorker.js'
+} from '../services/whatsappClient.ts'
+import { enqueueSuggestion, materializeWhatsAppQuote } from '../services/waSuggestionWorker.ts'
 
 export const whatsappRouter = Router()
 

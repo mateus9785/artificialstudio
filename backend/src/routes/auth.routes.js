@@ -1,8 +1,8 @@
 import { Router } from 'express'
 import bcrypt from 'bcryptjs'
 import rateLimit from 'express-rate-limit'
-import { pool } from '../db/pool.js'
-import { signAdminToken } from '../utils/jwt.js'
+import { pool } from '../db/pool.ts'
+import { signAdminToken } from '../utils/jwt.ts'
 import { requireAdmin } from '../middleware/requireAdmin.js'
 
 export const authRouter = Router()

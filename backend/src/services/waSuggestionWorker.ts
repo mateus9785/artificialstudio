@@ -1,9 +1,9 @@
-import { pool } from '../db/pool.js'
+import { pool } from '../db/pool.ts'
 import { ClaudeNotInstalledError } from './claudeRunner.ts'
 import { ClaudeQueueFullError } from './claudeGate.ts'
-import { generateSuggestion } from './waSellerRunner.js'
-import { extractQuote } from './quoteExtractor.js'
-import { createCardFromQuote } from './projectCard.js'
+import { generateSuggestion, type Lead } from './waSellerRunner.ts'
+import { extractQuote } from './quoteExtractor.ts'
+import { createCardFromQuote } from './projectCard.ts'
 
 /**
  * Worker de sugestões de resposta do WhatsApp — espelho do aiChatWorker, com uma diferença de
@@ -19,13 +19,47 @@ import { createCardFromQuote } from './projectCard.js'
 const POLL_MS = Number(process.env.AI_CHAT_POLL_MS) || 2000
 const MAX_ATTEMPTS = 2
 
+type SuggestionKind = 'reply' | 'cold_outreach'
+
+interface WaConversationRow {
+  id: number
+  contact_id: number
+  phone_number: string
+  collected_data: unknown
+}
+
+interface WaMessageRow {
+  id: number
+  direction: 'inbound' | 'outbound'
+  text: string | null
+  attachmentType: string | null
+}
+
+interface WaSuggestionJobRow {
+  id: number
+  conversation_id: number
+  kind: SuggestionKind
+  trigger_message_id: number | null
+  prospect_id: number | null
+  attempts: number
+}
+
+interface EnqueueSuggestionOptions {
+  triggerMessageId?: number | null
+  prospectId?: number | null
+}
+
 /**
  * Enfileira a geração de uma sugestão. Antes de inserir, marca como 'superseded' tudo que ainda não
  * foi resolvido na conversa — inclusive jobs 'running': se um estiver no meio da geração, o UPDATE
  * final dele (condicionado a status='running') não acha a linha e o resultado é descartado. Um
  * rascunho por conversa, sempre o mais novo.
  */
-export async function enqueueSuggestion(conversationId, kind, { triggerMessageId = null, prospectId = null } = {}) {
+export async function enqueueSuggestion(
+  conversationId: number,
+  kind: SuggestionKind,
+  { triggerMessageId = null, prospectId = null }: EnqueueSuggestionOptions = {},
+): Promise<number> {
   await pool.query(
     `UPDATE whatsapp_ai_suggestions SET status = 'superseded', finished_at = NOW()
      WHERE conversation_id = ? AND status IN ('pending', 'running', 'draft', 'error')`,
@@ -35,10 +69,10 @@ export async function enqueueSuggestion(conversationId, kind, { triggerMessageId
     'INSERT INTO whatsapp_ai_suggestions (conversation_id, kind, trigger_message_id, prospect_id) VALUES (?, ?, ?, ?)',
     [conversationId, kind, triggerMessageId, prospectId],
   )
-  return result.insertId
+  return (result as { insertId: number }).insertId
 }
 
-async function loadConversation(id) {
+async function loadConversation(id: number): Promise<WaConversationRow | null> {
   const [rows] = await pool.query(
     `SELECT c.*, ct.phone_number AS phone_number
      FROM whatsapp_conversations c
@@ -46,10 +80,10 @@ async function loadConversation(id) {
      WHERE c.id = ?`,
     [id],
   )
-  return rows[0] || null
+  return (rows as WaConversationRow[])[0] || null
 }
 
-async function loadMessages(conversationId) {
+async function loadMessages(conversationId: number): Promise<WaMessageRow[]> {
   const [rows] = await pool.query(
     `SELECT id, direction, text, attachment_type AS attachmentType
      FROM whatsapp_messages
@@ -57,10 +91,10 @@ async function loadMessages(conversationId) {
      ORDER BY sent_at ASC, id ASC`,
     [conversationId],
   )
-  return rows
+  return rows as WaMessageRow[]
 }
 
-function renderTranscript(messages) {
+function renderTranscript(messages: WaMessageRow[]): string {
   return messages
     .map((m) => {
       const who = m.direction === 'inbound' ? 'cliente' : 'vendedor'
@@ -71,7 +105,7 @@ function renderTranscript(messages) {
 }
 
 /** Mesmo casamento por telefone das rotas: prospect + brief mais recente. */
-async function loadLeadByPhone(phoneDigits) {
+async function loadLeadByPhone(phoneDigits: string | null | undefined): Promise<Lead | null> {
   if (!phoneDigits) return null
   const [rows] = await pool.query(
     `SELECT p.id, p.name, p.category, p.city, p.state, p.website, p.rating,
@@ -88,8 +122,8 @@ async function loadLeadByPhone(phoneDigits) {
      LIMIT 1`,
     [phoneDigits],
   )
-  if (!rows[0]) return null
-  const lead = rows[0]
+  const lead = (rows as Lead[])[0]
+  if (!lead) return null
   if (typeof lead.dores === 'string') {
     try {
       lead.dores = JSON.parse(lead.dores)
@@ -100,16 +134,16 @@ async function loadLeadByPhone(phoneDigits) {
   return lead
 }
 
-function parseCollected(value) {
+function parseCollected(value: unknown): Record<string, unknown> {
   if (value === null || value === undefined) return {}
   if (typeof value === 'string') {
     try {
-      return JSON.parse(value) || {}
+      return (JSON.parse(value) as Record<string, unknown>) || {}
     } catch {
       return {}
     }
   }
-  return value
+  return value as Record<string, unknown>
 }
 
 /**
@@ -117,20 +151,17 @@ function parseCollected(value) {
  * havia sido coletado antes (o modelo re-extrai da transcrição inteira a cada geração, mas um campo
  * que ele deixou de repetir não pode apagar um dado já capturado).
  */
-async function mergeCollectedData(conversationId, current, incoming) {
+async function mergeCollectedData(conversationId: number, current: unknown, incoming: unknown): Promise<void> {
   if (!incoming || typeof incoming !== 'object') return
-  const merged = { ...parseCollected(current) }
-  for (const [key, value] of Object.entries(incoming)) {
+  const merged: Record<string, unknown> = { ...parseCollected(current) }
+  for (const [key, value] of Object.entries(incoming as Record<string, unknown>)) {
     const empty = value === null || value === undefined || (Array.isArray(value) && value.length === 0)
     if (!empty) merged[key] = value
   }
-  await pool.query('UPDATE whatsapp_conversations SET collected_data = ? WHERE id = ?', [
-    JSON.stringify(merged),
-    conversationId,
-  ])
+  await pool.query('UPDATE whatsapp_conversations SET collected_data = ? WHERE id = ?', [JSON.stringify(merged), conversationId])
 }
 
-async function runSuggestionJob(job) {
+async function runSuggestionJob(job: WaSuggestionJobRow): Promise<void> {
   const conversation = await loadConversation(job.conversation_id)
   if (!conversation) return
 
@@ -143,10 +174,9 @@ async function runSuggestionJob(job) {
   // nossa, ela vira um follow-up.
   const isAuto = job.trigger_message_id !== null
   if (job.kind === 'reply' && isAuto && (!last || last.direction !== 'inbound')) {
-    await pool.query(
-      "UPDATE whatsapp_ai_suggestions SET status = 'superseded', finished_at = NOW() WHERE id = ? AND status = 'running'",
-      [job.id],
-    )
+    await pool.query("UPDATE whatsapp_ai_suggestions SET status = 'superseded', finished_at = NOW() WHERE id = ? AND status = 'running'", [
+      job.id,
+    ])
     return
   }
 
@@ -168,7 +198,7 @@ async function runSuggestionJob(job) {
      WHERE id = ? AND status = 'running'`,
     [suggestion.text, suggestion.quoteMarker, suggestion.fingerprint, job.id],
   )
-  if (updated.affectedRows === 0) return
+  if ((updated as { affectedRows: number }).affectedRows === 0) return
 
   await mergeCollectedData(job.conversation_id, conversation.collected_data, suggestion.collectedData)
 }
@@ -179,7 +209,7 @@ async function runSuggestionJob(job) {
  * tem FK para chat_conversations e não serve aqui — a idempotência fica no collected_data da
  * própria conversa (kanban_card_id gravado após criar).
  */
-export async function materializeWhatsAppQuote(conversationId) {
+export async function materializeWhatsAppQuote(conversationId: number): Promise<void> {
   const conversation = await loadConversation(conversationId)
   if (!conversation) return
 
@@ -199,53 +229,51 @@ export async function materializeWhatsAppQuote(conversationId) {
 
 // ---- Bomba de jobs (mesmo padrão do aiChatWorker) ----
 
-async function claimNextJob() {
-  const [candidates] = await pool.query(
-    "SELECT id FROM whatsapp_ai_suggestions WHERE status = 'pending' ORDER BY id ASC LIMIT 1",
-  )
-  if (candidates.length === 0) return null
+async function claimNextJob(): Promise<WaSuggestionJobRow | null> {
+  const [candidates] = await pool.query("SELECT id FROM whatsapp_ai_suggestions WHERE status = 'pending' ORDER BY id ASC LIMIT 1")
+  const candidateRows = candidates as Array<{ id: number }>
+  if (candidateRows.length === 0) return null
 
   const [claimed] = await pool.query(
     "UPDATE whatsapp_ai_suggestions SET status = 'running', started_at = NOW(), attempts = attempts + 1 WHERE id = ? AND status = 'pending'",
-    [candidates[0].id],
+    [candidateRows[0].id],
   )
-  if (claimed.affectedRows === 0) return null
+  if ((claimed as { affectedRows: number }).affectedRows === 0) return null
 
-  const [rows] = await pool.query('SELECT * FROM whatsapp_ai_suggestions WHERE id = ?', [candidates[0].id])
-  return rows[0]
+  const [rows] = await pool.query('SELECT * FROM whatsapp_ai_suggestions WHERE id = ?', [candidateRows[0].id])
+  return (rows as WaSuggestionJobRow[])[0] || null
 }
 
-async function failJob(job, err) {
-  const message = String(err?.message || err).slice(0, 2000)
+async function failJob(job: WaSuggestionJobRow, err: unknown): Promise<void> {
+  const message = String(err instanceof Error ? err.message : err).slice(0, 2000)
 
   // Fila cheia não é falha do job: volta para pending sem gastar tentativa.
   if (err instanceof ClaudeQueueFullError) {
-    await pool.query(
-      "UPDATE whatsapp_ai_suggestions SET status = 'pending', attempts = attempts - 1 WHERE id = ? AND status = 'running'",
-      [job.id],
-    )
+    await pool.query("UPDATE whatsapp_ai_suggestions SET status = 'pending', attempts = attempts - 1 WHERE id = ? AND status = 'running'", [
+      job.id,
+    ])
     return
   }
 
   const giveUp = job.attempts >= MAX_ATTEMPTS || err instanceof ClaudeNotInstalledError
   if (!giveUp) {
-    await pool.query(
-      "UPDATE whatsapp_ai_suggestions SET status = 'pending', error = ? WHERE id = ? AND status = 'running'",
-      [message, job.id],
-    )
+    await pool.query("UPDATE whatsapp_ai_suggestions SET status = 'pending', error = ? WHERE id = ? AND status = 'running'", [
+      message,
+      job.id,
+    ])
     return
   }
 
-  await pool.query(
-    "UPDATE whatsapp_ai_suggestions SET status = 'error', error = ?, finished_at = NOW() WHERE id = ? AND status = 'running'",
-    [message, job.id],
-  )
+  await pool.query("UPDATE whatsapp_ai_suggestions SET status = 'error', error = ?, finished_at = NOW() WHERE id = ? AND status = 'running'", [
+    message,
+    job.id,
+  ])
   console.error(`[wa-ia] sugestão ${job.id} (${job.kind}) falhou: ${message}`)
 }
 
 let running = false
 
-async function tick() {
+async function tick(): Promise<void> {
   if (running) return
   running = true
   try {
@@ -264,7 +292,7 @@ async function tick() {
   }
 }
 
-export function startWaSuggestionWorker() {
+export function startWaSuggestionWorker(): void {
   if (process.env.AI_CHAT_ENABLED === 'false') {
     console.log('[wa-ia] desligado por AI_CHAT_ENABLED=false — sugestões ficam na fila.')
     return
@@ -274,8 +302,9 @@ export function startWaSuggestionWorker() {
   pool
     .query("UPDATE whatsapp_ai_suggestions SET status = 'pending' WHERE status = 'running'")
     .then(([result]) => {
-      if (result.affectedRows > 0) {
-        console.log(`[wa-ia] ${result.affectedRows} sugestão(ões) interrompida(s) devolvida(s) para a fila.`)
+      const affectedRows = (result as { affectedRows: number }).affectedRows
+      if (affectedRows > 0) {
+        console.log(`[wa-ia] ${affectedRows} sugestão(ões) interrompida(s) devolvida(s) para a fila.`)
       }
     })
     .catch((err) => console.error('[wa-ia] falha ao recuperar sugestões interrompidas:', err))

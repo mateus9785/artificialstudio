@@ -3,7 +3,7 @@ import path from 'node:path'
 import fs from 'node:fs'
 import multer from 'multer'
 import sharp from 'sharp'
-import { slugify } from '../utils/slug.js'
+import { slugify } from '../utils/slug.ts'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 export const UPLOADS_DIR = path.join(__dirname, '../../uploads/posts')

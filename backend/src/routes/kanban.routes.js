@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { pool } from '../db/pool.js'
+import { pool } from '../db/pool.ts'
 import { requireAdmin } from '../middleware/requireAdmin.js'
 
 export const kanbanRouter = Router()

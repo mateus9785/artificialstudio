@@ -29,9 +29,9 @@ import 'dotenv/config'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { generateSuggestion, sellerFingerprint } from '../src/services/waSellerRunner.js'
+import { generateSuggestion, sellerFingerprint } from '../src/services/waSellerRunner.ts'
 import { runOneShot } from '../src/services/claudeRunner.js'
-import { extractJson } from '../src/services/quoteExtractor.js'
+import { extractJson } from '../src/services/quoteExtractor.ts'
 
 const OUT_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../tests/personas-wa')
 

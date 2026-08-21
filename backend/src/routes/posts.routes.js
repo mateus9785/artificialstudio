@@ -1,10 +1,10 @@
 import { Router } from 'express'
 import path from 'node:path'
 import fs from 'node:fs/promises'
-import { pool } from '../db/pool.js'
+import { pool } from '../db/pool.ts'
 import { requireAdmin } from '../middleware/requireAdmin.js'
 import { uploadPostImage, convertToWebp, resolveWebpFilename, UPLOADS_DIR } from '../middleware/upload.js'
-import { slugify } from '../utils/slug.js'
+import { slugify } from '../utils/slug.ts'
 
 export const postsRouter = Router()
 

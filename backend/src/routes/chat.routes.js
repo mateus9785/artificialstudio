@@ -1,7 +1,7 @@
 import { Router } from 'express'
-import { pool } from '../db/pool.js'
+import { pool } from '../db/pool.ts'
 import { requireAdmin } from '../middleware/requireAdmin.js'
-import { enqueueJob } from '../services/aiChatWorker.js'
+import { enqueueJob } from '../services/aiChatWorker.ts'
 
 export const chatRouter = Router()
 
