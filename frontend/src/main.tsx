@@ -10,7 +10,7 @@ import AboutPage from './AboutPage.jsx'
 
 const AdminApp = lazy(() => import('./admin/AdminApp.jsx'))
 
-createRoot(document.getElementById('root')).render(
+createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
       <Suspense fallback={null}>

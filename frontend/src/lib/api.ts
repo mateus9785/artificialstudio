@@ -1,7 +1,17 @@
 export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
 
-async function request(path, { method = 'GET', body, token } = {}) {
-  const headers = { 'Content-Type': 'application/json' }
+export interface ApiError extends Error {
+  status?: number
+}
+
+interface RequestOptions {
+  method?: string
+  body?: unknown
+  token?: string | null
+}
+
+async function request(path: string, { method = 'GET', body, token }: RequestOptions = {}): Promise<unknown> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
   if (token) headers.Authorization = `Bearer ${token}`
 
   const res = await fetch(`${API_URL}${path}`, {
@@ -18,7 +28,7 @@ async function request(path, { method = 'GET', body, token } = {}) {
     } catch {
       // resposta sem corpo JSON
     }
-    const error = new Error(message)
+    const error: ApiError = new Error(message)
     error.status = res.status
     throw error
   }
@@ -28,14 +38,20 @@ async function request(path, { method = 'GET', body, token } = {}) {
 }
 
 export const api = {
-  get: (path, token) => request(path, { token }),
-  post: (path, body, token) => request(path, { method: 'POST', body, token }),
-  put: (path, body, token) => request(path, { method: 'PUT', body, token }),
-  patch: (path, body, token) => request(path, { method: 'PATCH', body, token }),
-  del: (path, token) => request(path, { method: 'DELETE', token }),
+  get: (path: string, token?: string | null) => request(path, { token }),
+  post: (path: string, body?: unknown, token?: string | null) => request(path, { method: 'POST', body, token }),
+  put: (path: string, body?: unknown, token?: string | null) => request(path, { method: 'PUT', body, token }),
+  patch: (path: string, body?: unknown, token?: string | null) => request(path, { method: 'PATCH', body, token }),
+  del: (path: string, token?: string | null) => request(path, { method: 'DELETE', token }),
 }
 
-export async function uploadFile(path, file, fieldName, token, extraFields = {}) {
+export async function uploadFile(
+  path: string,
+  file: File,
+  fieldName: string,
+  token?: string | null,
+  extraFields: Record<string, string> = {},
+): Promise<unknown> {
   const formData = new FormData()
   formData.append(fieldName, file)
   for (const [key, value] of Object.entries(extraFields)) {
@@ -56,7 +72,7 @@ export async function uploadFile(path, file, fieldName, token, extraFields = {})
     } catch {
       // resposta sem corpo JSON
     }
-    const error = new Error(message)
+    const error: ApiError = new Error(message)
     error.status = res.status
     throw error
   }
