@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { runPrompt } from './claudeRunner.js'
+import { runPrompt } from './claudeRunner.ts'
 import { splitMarkers } from './aiChatWorker.js'
 import { extractJson } from './quoteExtractor.js'
 
