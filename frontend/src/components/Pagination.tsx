@@ -1,7 +1,13 @@
-export default function Pagination({ page, totalPages, onPageChange }) {
+interface PaginationProps {
+  page: number
+  totalPages: number
+  onPageChange: (page: number) => void
+}
+
+export default function Pagination({ page, totalPages, onPageChange }: PaginationProps) {
   if (totalPages <= 1) return null
 
-  function goTo(p) {
+  function goTo(p: number) {
     if (p < 1 || p > totalPages || p === page) return
     onPageChange(p)
   }

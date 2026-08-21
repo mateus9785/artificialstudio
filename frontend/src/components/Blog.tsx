@@ -3,10 +3,13 @@ import { Link } from 'react-router-dom'
 import { ArrowRight } from 'lucide-react'
 import { api } from '../lib/api'
 import PostCard from './PostCard'
+import type { Post } from '../lib/types'
+
+type Status = 'loading' | 'ready' | 'error'
 
 export default function Blog() {
-  const [posts, setPosts] = useState([])
-  const [status, setStatus] = useState('loading')
+  const [posts, setPosts] = useState<Post[]>([])
+  const [status, setStatus] = useState<Status>('loading')
 
   useEffect(() => {
     let active = true
@@ -14,7 +17,7 @@ export default function Blog() {
       .get('/posts?limit=3')
       .then((data) => {
         if (active) {
-          setPosts(data)
+          setPosts(data as Post[])
           setStatus('ready')
         }
       })
@@ -27,17 +30,12 @@ export default function Blog() {
   }, [])
 
   return (
-    <section
-      id="blog"
-      className="relative py-28 overflow-hidden scroll-mt-20"
-      style={{ background: '#070707' }}
-    >
+    <section id="blog" className="relative py-28 overflow-hidden scroll-mt-20" style={{ background: '#070707' }}>
       {/* Top glow */}
       <div
         className="absolute top-0 left-0 right-0 h-px pointer-events-none"
         style={{
-          background:
-            'linear-gradient(to right, transparent, rgba(168,85,247,0.3), transparent)',
+          background: 'linear-gradient(to right, transparent, rgba(168,85,247,0.3), transparent)',
         }}
       />
 

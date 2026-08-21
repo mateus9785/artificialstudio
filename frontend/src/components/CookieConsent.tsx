@@ -1,13 +1,17 @@
 import { useState } from 'react'
 import { Shield, X } from 'lucide-react'
-import { storeConsent, initTrackingScripts } from '../lib/analytics'
+import { storeConsent, initTrackingScripts, type ConsentPreferences } from '../lib/analytics'
 
-export default function CookieConsent({ onDecision }) {
+interface CookieConsentProps {
+  onDecision: (consent: ConsentPreferences) => void
+}
+
+export default function CookieConsent({ onDecision }: CookieConsentProps) {
   const [showPreferences, setShowPreferences] = useState(false)
   const [analytics, setAnalytics] = useState(true)
   const [marketing, setMarketing] = useState(true)
 
-  function applyConsent(consent) {
+  function applyConsent(consent: ConsentPreferences) {
     storeConsent(consent)
     initTrackingScripts(consent)
     onDecision(consent)
@@ -26,11 +30,7 @@ export default function CookieConsent({ onDecision }) {
   }
 
   return (
-    <div
-      className="fixed bottom-0 left-0 right-0 z-[60] p-4 sm:p-6"
-      role="dialog"
-      aria-label="Consentimento de cookies"
-    >
+    <div className="fixed bottom-0 left-0 right-0 z-[60] p-4 sm:p-6" role="dialog" aria-label="Consentimento de cookies">
       <div
         className="relative max-w-3xl mx-auto rounded-2xl overflow-hidden"
         style={{

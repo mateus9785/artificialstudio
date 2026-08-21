@@ -1,15 +1,15 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type RefObject } from 'react'
 import { ArrowRight } from 'lucide-react'
 import { WHATSAPP_NUMBER } from '../lib/whatsapp'
 
-const gradientTextStyle = {
+const gradientTextStyle: CSSProperties = {
   background: 'linear-gradient(135deg, #22d3ee 0%, #a855f7 100%)',
   WebkitBackgroundClip: 'text',
   WebkitTextFillColor: 'transparent',
   backgroundClip: 'text',
 }
 
-function RevealWords({ text, delayStart = 0, gradient = false }) {
+function RevealWords({ text, delayStart = 0, gradient = false }: { text: string; delayStart?: number; gradient?: boolean }) {
   return text.split(' ').map((word, i) => (
     <span
       key={`${word}-${i}`}
@@ -25,7 +25,7 @@ function RevealWords({ text, delayStart = 0, gradient = false }) {
   ))
 }
 
-function useInView(ref, threshold = 0.4) {
+function useInView(ref: RefObject<HTMLElement | null>, threshold = 0.4): boolean {
   const [inView, setInView] = useState(false)
 
   useEffect(() => {
@@ -38,7 +38,7 @@ function useInView(ref, threshold = 0.4) {
           observer.disconnect()
         }
       },
-      { threshold }
+      { threshold },
     )
     observer.observe(el)
     return () => observer.disconnect()
@@ -47,11 +47,11 @@ function useInView(ref, threshold = 0.4) {
   return inView
 }
 
-function StatCounter({ value }) {
+function StatCounter({ value }: { value: string }) {
   const match = value.match(/^(\d+)(.*)$/)
   const target = match ? parseInt(match[1], 10) : null
   const suffix = match ? match[2] : ''
-  const ref = useRef(null)
+  const ref = useRef<HTMLSpanElement>(null)
   const inView = useInView(ref, 0.6)
   const [display, setDisplay] = useState(0)
   const [settled, setSettled] = useState(target === null)
@@ -68,9 +68,9 @@ function StatCounter({ value }) {
 
     const duration = 1100
     const start = performance.now()
-    let raf
+    let raf: number
 
-    const tick = (now) => {
+    const tick = (now: number) => {
       const progress = Math.min((now - start) / duration, 1)
       const eased = 1 - Math.pow(1 - progress, 3)
       setDisplay(Math.round(eased * target))
@@ -93,13 +93,22 @@ function StatCounter({ value }) {
   )
 }
 
+interface Dot {
+  x: number
+  y: number
+  opacity: number
+  speed: number
+  phase: number
+}
+
 function DotsBackground() {
-  const canvasRef = useRef(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')
+    if (!ctx) return
 
     const resize = () => {
       canvas.width = canvas.offsetWidth
@@ -108,7 +117,7 @@ function DotsBackground() {
     resize()
     window.addEventListener('resize', resize)
 
-    const dots = []
+    const dots: Dot[] = []
     const spacing = 36
     const cols = Math.ceil(canvas.width / spacing) + 1
     const rows = Math.ceil(canvas.height / spacing) + 1
@@ -125,7 +134,7 @@ function DotsBackground() {
       }
     }
 
-    let animId
+    let animId: number
     let time = 0
 
     const draw = () => {
@@ -151,19 +160,13 @@ function DotsBackground() {
     }
   }, [])
 
-  return (
-    <canvas
-      ref={canvasRef}
-      className="absolute inset-0 w-full h-full pointer-events-none"
-      style={{ opacity: 0.7 }}
-    />
-  )
+  return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" style={{ opacity: 0.7 }} />
 }
 
 export default function Hero() {
-  const spotlightRef = useRef(null)
+  const spotlightRef = useRef<HTMLDivElement>(null)
 
-  const handleMouseMove = (e) => {
+  const handleMouseMove = (e: React.MouseEvent<HTMLElement>) => {
     if (!spotlightRef.current) return
     const rect = e.currentTarget.getBoundingClientRect()
     const x = ((e.clientX - rect.left) / rect.width) * 100
@@ -197,22 +200,19 @@ export default function Hero() {
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          background:
-            'radial-gradient(ellipse 80% 50% at 50% -10%, rgba(34,211,238,0.10) 0%, transparent 70%)',
+          background: 'radial-gradient(ellipse 80% 50% at 50% -10%, rgba(34,211,238,0.10) 0%, transparent 70%)',
         }}
       />
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          background:
-            'radial-gradient(ellipse 50% 40% at 85% 60%, rgba(168,85,247,0.07) 0%, transparent 60%)',
+          background: 'radial-gradient(ellipse 50% 40% at 85% 60%, rgba(168,85,247,0.07) 0%, transparent 60%)',
         }}
       />
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          background:
-            'radial-gradient(ellipse 40% 30% at 10% 70%, rgba(34,211,238,0.05) 0%, transparent 60%)',
+          background: 'radial-gradient(ellipse 40% 30% at 10% 70%, rgba(34,211,238,0.05) 0%, transparent 60%)',
         }}
       />
 

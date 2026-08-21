@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Bot, MessageCircleMore, LayoutDashboard, Rocket, ArrowRight, Check } from 'lucide-react'
+import { Bot, MessageCircleMore, LayoutDashboard, Rocket, ArrowRight, Check, type LucideIcon } from 'lucide-react'
 import { WHATSAPP_NUMBER } from '../lib/whatsapp'
 
 const SITE_URL = 'https://artificialstudio.com.br'
@@ -7,7 +7,18 @@ const PAGE_TITLE = 'Nossos Serviços | Artificial Studio'
 const PAGE_DESCRIPTION =
   'Automações inteligentes, IA de atendimento, dashboards SaaS e landing pages de alta conversão. Conheça as soluções sob medida da Artificial Studio.'
 
-const SERVICES = [
+interface Service {
+  id: string
+  icon: LucideIcon
+  accent: string
+  title: string
+  intro: string
+  resolve: string
+  variants: string[]
+  example: { problem: string; solution: string }
+}
+
+const SERVICES: Service[] = [
   {
     id: 'automacoes-web-scraping',
     icon: Bot,
@@ -96,7 +107,7 @@ const SERVICES = [
   },
 ]
 
-const COMPARISON_ROWS = [
+const COMPARISON_ROWS: Array<{ challenge: string; solution: string; benefit: string }> = [
   {
     challenge: 'Perco muito tempo copiando e colando dados.',
     solution: 'Automação',
@@ -119,7 +130,7 @@ const COMPARISON_ROWS = [
   },
 ]
 
-const PROCESS_STEPS = [
+const PROCESS_STEPS: Array<{ title: string; description: string }> = [
   {
     title: 'Imersão & Diagnóstico',
     description: 'Entendemos o gargalo do seu negócio.',
@@ -138,7 +149,7 @@ const PROCESS_STEPS = [
   },
 ]
 
-function setMetaTag(selector, attrs) {
+function setMetaTag(selector: string, attrs: Record<string, string>): void {
   let el = document.head.querySelector(selector)
   if (!el) {
     el = document.createElement('meta')
@@ -174,7 +185,7 @@ function useServicesSeo() {
   }, [])
 }
 
-function ServiceSection({ service, index }) {
+function ServiceSection({ service, index }: { service: Service; index: number }) {
   const Icon = service.icon
   return (
     <section

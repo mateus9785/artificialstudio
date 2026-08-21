@@ -2,16 +2,21 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, Calendar } from 'lucide-react'
 import { api, API_URL } from '../lib/api'
+import type { Post } from '../lib/types'
 
 const SITE_URL = 'https://artificialstudio.com.br'
 
-function formatDate(isoDate) {
+type Status = 'loading' | 'ready' | 'error'
+
+type ContentBlock = { type: 'h2' | 'h3' | 'p'; text: string } | { type: 'ul'; items: string[] }
+
+function formatDate(isoDate: string | null): string {
   if (!isoDate) return ''
   const date = new Date(isoDate)
   return new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }).format(date)
 }
 
-function resolveImageUrl(imageUrl) {
+function resolveImageUrl(imageUrl: string | null): string | null {
   if (!imageUrl) return null
   if (/^https?:\/\//.test(imageUrl)) return imageUrl
   return `${new URL(API_URL).origin}${imageUrl}`
@@ -19,10 +24,10 @@ function resolveImageUrl(imageUrl) {
 
 // Suporta um subconjunto mínimo de markdown (## / ### / listas) para dar
 // hierarquia semântica real (h2/h3) ao conteúdo de artigos longos.
-function renderContent(content) {
-  const blocks = []
-  let paragraph = []
-  let list = []
+function renderContent(content: string) {
+  const blocks: ContentBlock[] = []
+  let paragraph: string[] = []
+  let list: string[] = []
 
   const flushParagraph = () => {
     if (paragraph.length) {
@@ -64,22 +69,14 @@ function renderContent(content) {
   return blocks.map((block, i) => {
     if (block.type === 'h2') {
       return (
-        <h2
-          key={i}
-          className="font-bold mt-10 mb-4 leading-snug"
-          style={{ fontSize: '1.5rem', color: '#f4f4f5', letterSpacing: '-0.3px' }}
-        >
+        <h2 key={i} className="font-bold mt-10 mb-4 leading-snug" style={{ fontSize: '1.5rem', color: '#f4f4f5', letterSpacing: '-0.3px' }}>
           {block.text}
         </h2>
       )
     }
     if (block.type === 'h3') {
       return (
-        <h3
-          key={i}
-          className="font-semibold mt-8 mb-3 leading-snug"
-          style={{ fontSize: '1.15rem', color: '#e4e4e7' }}
-        >
+        <h3 key={i} className="font-semibold mt-8 mb-3 leading-snug" style={{ fontSize: '1.15rem', color: '#e4e4e7' }}>
           {block.text}
         </h3>
       )
@@ -103,7 +100,7 @@ function renderContent(content) {
   })
 }
 
-function setMetaTag(selector, attrs) {
+function setMetaTag(selector: string, attrs: Record<string, string>): void {
   let el = document.head.querySelector(selector)
   if (!el) {
     el = document.createElement('meta')
@@ -112,7 +109,7 @@ function setMetaTag(selector, attrs) {
   Object.entries(attrs).forEach(([key, value]) => el.setAttribute(key, value))
 }
 
-function useBlogPostSeo(post) {
+function useBlogPostSeo(post: Post | null) {
   useEffect(() => {
     if (!post) return
 
@@ -148,8 +145,8 @@ function useBlogPostSeo(post) {
 
 export default function BlogPost() {
   const { slug } = useParams()
-  const [post, setPost] = useState(null)
-  const [status, setStatus] = useState('loading')
+  const [post, setPost] = useState<Post | null>(null)
+  const [status, setStatus] = useState<Status>('loading')
 
   useEffect(() => {
     let active = true
@@ -159,7 +156,7 @@ export default function BlogPost() {
       .get(`/posts/${slug}`)
       .then((data) => {
         if (active) {
-          setPost(data)
+          setPost(data as Post)
           setStatus('ready')
         }
       })
@@ -203,11 +200,7 @@ export default function BlogPost() {
     <article className="relative py-28" style={{ background: '#070707' }}>
       <div className="max-w-3xl mx-auto px-6">
         <div className="flex items-center justify-between gap-4 mb-8">
-          <Link
-            to="/#blog"
-            className="inline-flex items-center gap-2 text-sm font-medium flex-shrink-0"
-            style={{ color: '#71717a' }}
-          >
+          <Link to="/#blog" className="inline-flex items-center gap-2 text-sm font-medium flex-shrink-0" style={{ color: '#71717a' }}>
             <ArrowLeft size={15} />
             Voltar para o blog
           </Link>
@@ -234,7 +227,7 @@ export default function BlogPost() {
         <div className="flex items-center gap-4 mb-8 text-xs" style={{ color: '#71717a' }}>
           <span className="flex items-center gap-1.5">
             <Calendar size={13} />
-            <time dateTime={post.publishedAt}>{formatDate(post.publishedAt)}</time>
+            <time dateTime={post.publishedAt ?? undefined}>{formatDate(post.publishedAt)}</time>
           </span>
         </div>
 
