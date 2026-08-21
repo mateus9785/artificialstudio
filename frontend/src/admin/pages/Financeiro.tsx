@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { Plus, Pencil, Trash2, X, TrendingUp, TrendingDown, Scale } from 'lucide-react'
+import { useEffect, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react'
+import { Plus, Pencil, Trash2, X, TrendingUp, TrendingDown, Scale, type LucideIcon } from 'lucide-react'
 import { api } from '../../lib/api'
 import { getAdminToken } from '../../lib/adminAuth'
 import { useAdminGuard } from '../useAdminGuard'
@@ -7,16 +7,36 @@ import Pagination from '../../components/Pagination'
 
 const PAGE_SIZE = 10
 
-const TYPE_LABELS = {
+type LancamentoType = 'entrada' | 'saida'
+
+interface Lancamento {
+  id: number
+  type: LancamentoType
+  description: string
+  amount: number
+  occurredOn: string
+  createdAt: string
+  updatedAt: string
+}
+
+interface LancamentoFormData {
+  id?: number
+  type: LancamentoType
+  description: string
+  amount: string | number
+  occurredOn: string
+}
+
+const TYPE_LABELS: Record<LancamentoType, string> = {
   entrada: 'Entrada',
   saida: 'Saída',
 }
 
-function currentMonth() {
+function currentMonth(): string {
   return new Date().toISOString().slice(0, 7)
 }
 
-function emptyForm(month) {
+function emptyForm(month: string): LancamentoFormData {
   return {
     type: 'entrada',
     description: '',
@@ -25,17 +45,17 @@ function emptyForm(month) {
   }
 }
 
-function formatCurrency(value) {
+function formatCurrency(value: number | string | null | undefined): string {
   return Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
-function formatDate(value) {
+function formatDate(value: string | null | undefined): string {
   if (!value) return '—'
   const [year, month, day] = String(value).slice(0, 10).split('-')
   return `${day}/${month}/${year}`
 }
 
-const inputStyle = {
+const inputStyle: CSSProperties = {
   width: '100%',
   padding: '10px 14px',
   borderRadius: '12px',
@@ -46,10 +66,10 @@ const inputStyle = {
   color: '#e4e4e7',
 }
 
-const selectStyle = { ...inputStyle, colorScheme: 'dark', cursor: 'pointer' }
-const optionStyle = { background: '#0a0a0a', color: '#e4e4e7' }
+const selectStyle: CSSProperties = { ...inputStyle, colorScheme: 'dark', cursor: 'pointer' }
+const optionStyle: CSSProperties = { background: '#0a0a0a', color: '#e4e4e7' }
 
-function Field({ label, children }) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
       <label className="text-xs font-medium block mb-1.5" style={{ color: '#a1a1aa' }}>
@@ -60,7 +80,7 @@ function Field({ label, children }) {
   )
 }
 
-function LancamentoCard({ lancamento, onEdit, onDelete }) {
+function LancamentoCard({ lancamento, onEdit, onDelete }: { lancamento: Lancamento; onEdit: (l: Lancamento) => void; onDelete: (l: Lancamento) => void }) {
   const isEntrada = lancamento.type === 'entrada'
   const color = isEntrada ? '#4ade80' : '#f87171'
   return (
@@ -69,10 +89,7 @@ function LancamentoCard({ lancamento, onEdit, onDelete }) {
         <p className="font-medium" style={{ color: '#e4e4e7' }}>
           {lancamento.description}
         </p>
-        <span
-          className="inline-block flex-shrink-0 text-xs font-medium px-2.5 py-1 rounded-md"
-          style={{ background: `${color}14`, color, border: `1px solid ${color}22` }}
-        >
+        <span className="inline-block flex-shrink-0 text-xs font-medium px-2.5 py-1 rounded-md" style={{ background: `${color}14`, color, border: `1px solid ${color}22` }}>
           {TYPE_LABELS[lancamento.type]}
         </span>
       </div>
@@ -108,16 +125,10 @@ function LancamentoCard({ lancamento, onEdit, onDelete }) {
   )
 }
 
-function SummaryCard({ icon: Icon, label, value, color }) {
+function SummaryCard({ icon: Icon, label, value, color }: { icon: LucideIcon; label: string; value: number; color: string }) {
   return (
-    <div
-      className="rounded-2xl p-5 flex items-center gap-4"
-      style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
-    >
-      <div
-        className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-        style={{ background: `${color}14`, color }}
-      >
+    <div className="rounded-2xl p-5 flex items-center gap-4" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+      <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${color}14`, color }}>
         <Icon size={18} />
       </div>
       <div className="min-w-0">
@@ -132,17 +143,17 @@ function SummaryCard({ icon: Icon, label, value, color }) {
   )
 }
 
-function LancamentoForm({ initial, onCancel, onSaved }) {
+function LancamentoForm({ initial, onCancel, onSaved }: { initial: LancamentoFormData; onCancel: () => void; onSaved: (l: Lancamento) => void }) {
   const { handleError } = useAdminGuard()
-  const [form, setForm] = useState(initial)
+  const [form, setForm] = useState<LancamentoFormData>(initial)
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
-  function update(field, value) {
+  function update<K extends keyof LancamentoFormData>(field: K, value: LancamentoFormData[K]) {
     setForm((prev) => ({ ...prev, [field]: value }))
   }
 
-  async function handleSubmit(e) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setError('')
     setSaving(true)
@@ -154,12 +165,10 @@ function LancamentoForm({ initial, onCancel, onSaved }) {
         amount: Number(form.amount),
         occurredOn: form.occurredOn,
       }
-      const saved = form.id
-        ? await api.put(`/admin/financeiro/${form.id}`, payload, token)
-        : await api.post('/admin/financeiro', payload, token)
+      const saved = (form.id ? await api.put(`/admin/financeiro/${form.id}`, payload, token) : await api.post('/admin/financeiro', payload, token)) as Lancamento
       onSaved(saved)
     } catch (err) {
-      if (!handleError(err)) setError(err.message || 'Não foi possível salvar o lançamento.')
+      if (!handleError(err)) setError((err as Error).message || 'Não foi possível salvar o lançamento.')
     } finally {
       setSaving(false)
     }
@@ -167,10 +176,7 @@ function LancamentoForm({ initial, onCancel, onSaved }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.6)' }}>
-      <div
-        className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl p-6"
-        style={{ background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.08)' }}
-      >
+      <div className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl p-6" style={{ background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.08)' }}>
         <div className="flex items-center justify-between mb-5">
           <h3 className="text-base font-semibold" style={{ color: '#f4f4f5' }}>
             {form.id ? 'Editar lançamento' : 'Novo lançamento'}
@@ -182,41 +188,26 @@ function LancamentoForm({ initial, onCancel, onSaved }) {
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <Field label="Tipo">
-            <select value={form.type} onChange={(e) => update('type', e.target.value)} style={selectStyle}>
-              <option value="entrada" style={optionStyle}>Entrada (ganho)</option>
-              <option value="saida" style={optionStyle}>Saída (gasto)</option>
+            <select value={form.type} onChange={(e) => update('type', e.target.value as LancamentoType)} style={selectStyle}>
+              <option value="entrada" style={optionStyle}>
+                Entrada (ganho)
+              </option>
+              <option value="saida" style={optionStyle}>
+                Saída (gasto)
+              </option>
             </select>
           </Field>
 
           <Field label="Descrição">
-            <input
-              value={form.description}
-              onChange={(e) => update('description', e.target.value)}
-              required
-              style={inputStyle}
-            />
+            <input value={form.description} onChange={(e) => update('description', e.target.value)} required style={inputStyle} />
           </Field>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Valor (R$)">
-              <input
-                type="number"
-                min="0.01"
-                step="0.01"
-                value={form.amount}
-                onChange={(e) => update('amount', e.target.value)}
-                required
-                style={inputStyle}
-              />
+              <input type="number" min="0.01" step="0.01" value={form.amount} onChange={(e) => update('amount', e.target.value)} required style={inputStyle} />
             </Field>
             <Field label="Data">
-              <input
-                type="date"
-                value={form.occurredOn}
-                onChange={(e) => update('occurredOn', e.target.value)}
-                required
-                style={inputStyle}
-              />
+              <input type="date" value={form.occurredOn} onChange={(e) => update('occurredOn', e.target.value)} required style={inputStyle} />
             </Field>
           </div>
 
@@ -250,12 +241,14 @@ function LancamentoForm({ initial, onCancel, onSaved }) {
   )
 }
 
+type Status = 'loading' | 'ready' | 'error'
+
 export default function Financeiro() {
   const { handleError } = useAdminGuard()
   const [month, setMonth] = useState(currentMonth())
-  const [lancamentos, setLancamentos] = useState([])
-  const [status, setStatus] = useState('loading')
-  const [editing, setEditing] = useState(null)
+  const [lancamentos, setLancamentos] = useState<Lancamento[]>([])
+  const [status, setStatus] = useState<Status>('loading')
+  const [editing, setEditing] = useState<LancamentoFormData | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [page, setPage] = useState(1)
 
@@ -264,7 +257,7 @@ export default function Financeiro() {
     api
       .get(`/admin/financeiro?month=${month}`, getAdminToken())
       .then((data) => {
-        setLancamentos(data)
+        setLancamentos(data as Lancamento[])
         setStatus('ready')
       })
       .catch((err) => {
@@ -296,7 +289,7 @@ export default function Financeiro() {
     setShowForm(true)
   }
 
-  function openEdit(lancamento) {
+  function openEdit(lancamento: Lancamento) {
     setEditing({ ...lancamento, occurredOn: lancamento.occurredOn?.slice(0, 10) })
     setShowForm(true)
   }
@@ -307,13 +300,13 @@ export default function Financeiro() {
     load()
   }
 
-  async function handleDelete(lancamento) {
+  async function handleDelete(lancamento: Lancamento) {
     if (!window.confirm(`Excluir o lançamento "${lancamento.description}"? Essa ação não pode ser desfeita.`)) return
     try {
       await api.del(`/admin/financeiro/${lancamento.id}`, getAdminToken())
       setLancamentos((prev) => prev.filter((l) => l.id !== lancamento.id))
     } catch (err) {
-      if (!handleError(err)) window.alert(err.message || 'Não foi possível excluir o lançamento.')
+      if (!handleError(err)) window.alert((err as Error).message || 'Não foi possível excluir o lançamento.')
     }
   }
 
@@ -324,12 +317,7 @@ export default function Financeiro() {
           Financeiro
         </h1>
         <div className="flex items-center gap-3">
-          <input
-            type="month"
-            value={month}
-            onChange={(e) => setMonth(e.target.value)}
-            style={{ ...inputStyle, width: 'auto' }}
-          />
+          <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} style={{ ...inputStyle, width: 'auto' }} />
           <button
             onClick={openCreate}
             className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-medium cursor-pointer flex-shrink-0"
@@ -364,64 +352,71 @@ export default function Financeiro() {
 
               <div className="hidden sm:block rounded-2xl overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.06)' }}>
                 <div className="overflow-x-auto">
-                <table className="w-full text-sm" style={{ borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                      <th className="text-left font-medium px-5 py-3" style={{ color: '#a1a1aa' }}>Data</th>
-                      <th className="text-left font-medium px-5 py-3" style={{ color: '#a1a1aa' }}>Descrição</th>
-                      <th className="text-left font-medium px-5 py-3" style={{ color: '#a1a1aa' }}>Tipo</th>
-                      <th className="text-right font-medium px-5 py-3" style={{ color: '#a1a1aa' }}>Valor</th>
-                      <th className="text-right font-medium px-5 py-3" style={{ color: '#a1a1aa' }}>Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {paginated.map((lancamento) => {
-                      const isEntrada = lancamento.type === 'entrada'
-                      const color = isEntrada ? '#4ade80' : '#f87171'
-                      return (
-                        <tr key={lancamento.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                          <td className="px-5 py-3 whitespace-nowrap" style={{ color: '#71717a' }}>
-                            {formatDate(lancamento.occurredOn)}
-                          </td>
-                          <td className="px-5 py-3" style={{ color: '#e4e4e7' }}>
-                            {lancamento.description}
-                          </td>
-                          <td className="px-5 py-3">
-                            <span
-                              className="inline-block text-xs font-medium px-2.5 py-1 rounded-md"
-                              style={{ background: `${color}14`, color, border: `1px solid ${color}22` }}
-                            >
-                              {TYPE_LABELS[lancamento.type]}
-                            </span>
-                          </td>
-                          <td className="px-5 py-3 text-right font-medium whitespace-nowrap" style={{ color }}>
-                            {isEntrada ? '+' : '-'} {formatCurrency(lancamento.amount)}
-                          </td>
-                          <td className="px-5 py-3">
-                            <div className="flex items-center justify-end gap-2">
-                              <button
-                                onClick={() => openEdit(lancamento)}
-                                aria-label="Editar lançamento"
-                                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium cursor-pointer"
-                                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: '#a1a1aa' }}
-                              >
-                                <Pencil size={13} />
-                              </button>
-                              <button
-                                onClick={() => handleDelete(lancamento)}
-                                aria-label="Excluir lançamento"
-                                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium cursor-pointer"
-                                style={{ background: 'rgba(248,113,113,0.08)', color: '#f87171' }}
-                              >
-                                <Trash2 size={13} />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
+                  <table className="w-full text-sm" style={{ borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                        <th className="text-left font-medium px-5 py-3" style={{ color: '#a1a1aa' }}>
+                          Data
+                        </th>
+                        <th className="text-left font-medium px-5 py-3" style={{ color: '#a1a1aa' }}>
+                          Descrição
+                        </th>
+                        <th className="text-left font-medium px-5 py-3" style={{ color: '#a1a1aa' }}>
+                          Tipo
+                        </th>
+                        <th className="text-right font-medium px-5 py-3" style={{ color: '#a1a1aa' }}>
+                          Valor
+                        </th>
+                        <th className="text-right font-medium px-5 py-3" style={{ color: '#a1a1aa' }}>
+                          Ações
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {paginated.map((lancamento) => {
+                        const isEntrada = lancamento.type === 'entrada'
+                        const color = isEntrada ? '#4ade80' : '#f87171'
+                        return (
+                          <tr key={lancamento.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                            <td className="px-5 py-3 whitespace-nowrap" style={{ color: '#71717a' }}>
+                              {formatDate(lancamento.occurredOn)}
+                            </td>
+                            <td className="px-5 py-3" style={{ color: '#e4e4e7' }}>
+                              {lancamento.description}
+                            </td>
+                            <td className="px-5 py-3">
+                              <span className="inline-block text-xs font-medium px-2.5 py-1 rounded-md" style={{ background: `${color}14`, color, border: `1px solid ${color}22` }}>
+                                {TYPE_LABELS[lancamento.type]}
+                              </span>
+                            </td>
+                            <td className="px-5 py-3 text-right font-medium whitespace-nowrap" style={{ color }}>
+                              {isEntrada ? '+' : '-'} {formatCurrency(lancamento.amount)}
+                            </td>
+                            <td className="px-5 py-3">
+                              <div className="flex items-center justify-end gap-2">
+                                <button
+                                  onClick={() => openEdit(lancamento)}
+                                  aria-label="Editar lançamento"
+                                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium cursor-pointer"
+                                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: '#a1a1aa' }}
+                                >
+                                  <Pencil size={13} />
+                                </button>
+                                <button
+                                  onClick={() => handleDelete(lancamento)}
+                                  aria-label="Excluir lançamento"
+                                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium cursor-pointer"
+                                  style={{ background: 'rgba(248,113,113,0.08)', color: '#f87171' }}
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </>
@@ -430,9 +425,7 @@ export default function Financeiro() {
         </>
       )}
 
-      {showForm && (
-        <LancamentoForm initial={editing} onCancel={() => setShowForm(false)} onSaved={handleSaved} />
-      )}
+      {showForm && editing && <LancamentoForm initial={editing} onCancel={() => setShowForm(false)} onSaved={handleSaved} />}
     </div>
   )
 }

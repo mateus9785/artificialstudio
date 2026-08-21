@@ -1,10 +1,23 @@
 import { useState } from 'react'
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom'
-import { FileText, LogOut, ChevronsLeft, ChevronsRight, KeyRound, KanbanSquare, Wallet, Menu, X, Bot, MessageCircle } from 'lucide-react'
+import {
+  FileText,
+  LogOut,
+  ChevronsLeft,
+  ChevronsRight,
+  KeyRound,
+  KanbanSquare,
+  Wallet,
+  Menu,
+  X,
+  Bot,
+  MessageCircle,
+  type LucideIcon,
+} from 'lucide-react'
 import { clearAdminSession } from '../../lib/adminAuth'
 import ChangePasswordModal from './ChangePasswordModal'
 
-const NAV_ITEMS = [
+const NAV_ITEMS: Array<{ to: string; label: string; icon: LucideIcon }> = [
   { to: '/admin/posts', label: 'Blog', icon: FileText },
   { to: '/admin/conversas-ia', label: 'Conversas IA', icon: Bot },
   { to: '/admin/whatsapp', label: 'WhatsApp', icon: MessageCircle },
@@ -40,11 +53,7 @@ export default function AdminLayout() {
   return (
     <div className="h-screen flex overflow-hidden" style={{ background: '#050505' }}>
       {mobileOpen && (
-        <div
-          className="fixed inset-0 z-30 md:hidden"
-          style={{ background: 'rgba(0,0,0,0.6)' }}
-          onClick={() => setMobileOpen(false)}
-        />
+        <div className="fixed inset-0 z-30 md:hidden" style={{ background: 'rgba(0,0,0,0.6)' }} onClick={() => setMobileOpen(false)} />
       )}
 
       <aside
@@ -67,12 +76,7 @@ export default function AdminLayout() {
               </span>
             )}
           </div>
-          <button
-            onClick={() => setMobileOpen(false)}
-            className="md:hidden cursor-pointer p-1"
-            style={{ color: '#a1a1aa' }}
-            aria-label="Fechar menu"
-          >
+          <button onClick={() => setMobileOpen(false)} className="md:hidden cursor-pointer p-1" style={{ color: '#a1a1aa' }} aria-label="Fechar menu">
             <X size={18} />
           </button>
         </div>
@@ -143,16 +147,8 @@ export default function AdminLayout() {
       </aside>
 
       <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
-        <div
-          className="md:hidden flex items-center gap-3 px-4 py-3 flex-shrink-0"
-          style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
-        >
-          <button
-            onClick={() => setMobileOpen(true)}
-            className="cursor-pointer p-1"
-            style={{ color: '#a1a1aa' }}
-            aria-label="Abrir menu"
-          >
+        <div className="md:hidden flex items-center gap-3 px-4 py-3 flex-shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+          <button onClick={() => setMobileOpen(true)} className="cursor-pointer p-1" style={{ color: '#a1a1aa' }} aria-label="Abrir menu">
             <Menu size={20} />
           </button>
           <img src="/logo.png" alt="Artificial Studio" className="w-6 h-6 object-contain flex-shrink-0" />
@@ -160,8 +156,12 @@ export default function AdminLayout() {
             Admin
             {isProducaoAutomatizada && (
               <>
-                <span className="flex-shrink-0" style={{ color: '#3f3f46' }}>/</span>
-                <span className="truncate" style={{ color: '#a1a1aa' }}>Produção Automatizada</span>
+                <span className="flex-shrink-0" style={{ color: '#3f3f46' }}>
+                  /
+                </span>
+                <span className="truncate" style={{ color: '#a1a1aa' }}>
+                  Produção Automatizada
+                </span>
               </>
             )}
           </span>

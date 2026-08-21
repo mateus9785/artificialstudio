@@ -1,14 +1,28 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ChangeEvent, type CSSProperties, type FormEvent, type ReactNode } from 'react'
 import { Plus, Pencil, Trash2, X, Upload, TrendingUp } from 'lucide-react'
 import { api, API_URL, uploadFile } from '../../lib/api'
 import { getAdminToken } from '../../lib/adminAuth'
 import { hexToRgba } from '../../lib/color'
 import { useAdminGuard } from '../useAdminGuard'
 import Pagination from '../../components/Pagination'
+import type { Post } from '../../lib/types'
 
 const PAGE_SIZE = 6
 
-const EMPTY_FORM = {
+interface PostFormData {
+  id?: number
+  title: string
+  slug: string
+  excerpt: string
+  content: string
+  imageUrl: string
+  tag: string
+  tagColor: string
+  trending: boolean
+  publishedAt: string
+}
+
+const EMPTY_FORM: PostFormData = {
   title: '',
   slug: '',
   excerpt: '',
@@ -22,7 +36,7 @@ const EMPTY_FORM = {
 
 const DIACRITICS_REGEX = new RegExp('[\\u0300-\\u036f]', 'g')
 
-function slugify(text) {
+function slugify(text: string | null | undefined): string {
   return (text || '')
     .normalize('NFD')
     .replace(DIACRITICS_REGEX, '')
@@ -32,66 +46,66 @@ function slugify(text) {
     .replace(/^-+|-+$/g, '')
 }
 
-function resolveImageUrl(imageUrl) {
+function resolveImageUrl(imageUrl: string | null | undefined): string | null {
   if (!imageUrl) return null
   if (/^https?:\/\//.test(imageUrl)) return imageUrl
   return `${new URL(API_URL).origin}${imageUrl}`
 }
 
-function PostForm({ initial, onCancel, onSaved }) {
+interface PostFormProps {
+  initial: PostFormData
+  onCancel: () => void
+  onSaved: (post: Post) => void
+}
+
+function PostForm({ initial, onCancel, onSaved }: PostFormProps) {
   const { handleError } = useAdminGuard()
-  const [form, setForm] = useState(initial)
+  const [form, setForm] = useState<PostFormData>(initial)
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
 
-  function update(field, value) {
+  function update<K extends keyof PostFormData>(field: K, value: PostFormData[K]) {
     setForm((prev) => ({ ...prev, [field]: value }))
   }
 
-  async function handleImageChange(e) {
+  async function handleImageChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
     setError('')
     setUploading(true)
     try {
       const token = getAdminToken()
-      const { url } = await uploadFile('/admin/posts/upload', file, 'image', token, { title: form.title })
+      const { url } = (await uploadFile('/admin/posts/upload', file, 'image', token, { title: form.title })) as { url: string }
       update('imageUrl', url)
     } catch (err) {
-      if (!handleError(err)) setError(err.message || 'Não foi possível enviar a imagem.')
+      if (!handleError(err)) setError((err as Error).message || 'Não foi possível enviar a imagem.')
     } finally {
       setUploading(false)
       e.target.value = ''
     }
   }
 
-  async function handleSubmit(e) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setError('')
     setSaving(true)
     try {
       const token = getAdminToken()
-      const saved = form.id
+      const saved = (form.id
         ? await api.put(`/admin/posts/${form.id}`, form, token)
-        : await api.post('/admin/posts', form, token)
+        : await api.post('/admin/posts', form, token)) as Post
       onSaved(saved)
     } catch (err) {
-      if (!handleError(err)) setError(err.message || 'Não foi possível salvar o post.')
+      if (!handleError(err)) setError((err as Error).message || 'Não foi possível salvar o post.')
     } finally {
       setSaving(false)
     }
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: 'rgba(0,0,0,0.6)' }}
-    >
-      <div
-        className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl p-6"
-        style={{ background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.08)' }}
-      >
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.6)' }}>
+      <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl p-6" style={{ background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.08)' }}>
         <div className="flex items-center justify-between mb-5">
           <h3 className="text-base font-semibold" style={{ color: '#f4f4f5' }}>
             {form.id ? 'Editar post' : 'Novo post'}
@@ -103,12 +117,7 @@ function PostForm({ initial, onCancel, onSaved }) {
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <Field label="Título">
-            <input
-              value={form.title}
-              onChange={(e) => update('title', e.target.value)}
-              required
-              style={inputStyle}
-            />
+            <input value={form.title} onChange={(e) => update('title', e.target.value)} required style={inputStyle} />
           </Field>
 
           <Field label="URL amigável (slug)">
@@ -124,22 +133,11 @@ function PostForm({ initial, onCancel, onSaved }) {
           </Field>
 
           <Field label="Resumo">
-            <textarea
-              value={form.excerpt}
-              onChange={(e) => update('excerpt', e.target.value)}
-              required
-              rows={3}
-              style={inputStyle}
-            />
+            <textarea value={form.excerpt} onChange={(e) => update('excerpt', e.target.value)} required rows={3} style={inputStyle} />
           </Field>
 
           <Field label="Conteúdo (opcional)">
-            <textarea
-              value={form.content || ''}
-              onChange={(e) => update('content', e.target.value)}
-              rows={5}
-              style={inputStyle}
-            />
+            <textarea value={form.content || ''} onChange={(e) => update('content', e.target.value)} rows={5} style={inputStyle} />
           </Field>
 
           <Field label="Imagem de capa (opcional)">
@@ -154,7 +152,7 @@ function PostForm({ initial, onCancel, onSaved }) {
               </label>
               {form.imageUrl && (
                 <img
-                  src={resolveImageUrl(form.imageUrl)}
+                  src={resolveImageUrl(form.imageUrl) ?? undefined}
                   alt="Pré-visualização"
                   className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
                   style={{ border: '1px solid rgba(255,255,255,0.08)' }}
@@ -178,13 +176,7 @@ function PostForm({ initial, onCancel, onSaved }) {
           </div>
 
           <Field label="Data de publicação">
-            <input
-              type="date"
-              value={form.publishedAt?.slice(0, 10)}
-              onChange={(e) => update('publishedAt', e.target.value)}
-              required
-              style={inputStyle}
-            />
+            <input type="date" value={form.publishedAt?.slice(0, 10)} onChange={(e) => update('publishedAt', e.target.value)} required style={inputStyle} />
           </Field>
 
           <label className="flex items-center gap-2 text-sm" style={{ color: '#d4d4d8' }}>
@@ -222,7 +214,7 @@ function PostForm({ initial, onCancel, onSaved }) {
   )
 }
 
-function Field({ label, children }) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
       <label className="text-xs font-medium block mb-1.5" style={{ color: '#a1a1aa' }}>
@@ -233,7 +225,7 @@ function Field({ label, children }) {
   )
 }
 
-const inputStyle = {
+const inputStyle: CSSProperties = {
   width: '100%',
   padding: '10px 14px',
   borderRadius: '12px',
@@ -244,7 +236,7 @@ const inputStyle = {
   color: '#e4e4e7',
 }
 
-function AdminPostCard({ post, onEdit, onDelete }) {
+function AdminPostCard({ post, onEdit, onDelete }: { post: Post; onEdit: (post: Post) => void; onDelete: (post: Post) => void }) {
   const gradient = `linear-gradient(135deg, ${hexToRgba(post.tagColor, 0.06)} 0%, ${hexToRgba(post.tagColor, 0.02)} 100%)`
   const image = resolveImageUrl(post.imageUrl)
 
@@ -274,10 +266,7 @@ function AdminPostCard({ post, onEdit, onDelete }) {
       </div>
 
       <div className="p-5">
-        <span
-          className="inline-block text-xs font-medium px-2.5 py-1 rounded-md mb-3"
-          style={{ background: `${post.tagColor}14`, color: post.tagColor, border: `1px solid ${post.tagColor}22` }}
-        >
+        <span className="inline-block text-xs font-medium px-2.5 py-1 rounded-md mb-3" style={{ background: `${post.tagColor}14`, color: post.tagColor, border: `1px solid ${post.tagColor}22` }}>
           {post.tag}
         </span>
 
@@ -312,11 +301,13 @@ function AdminPostCard({ post, onEdit, onDelete }) {
   )
 }
 
+type Status = 'loading' | 'ready' | 'error'
+
 export default function Posts() {
   const { handleError } = useAdminGuard()
-  const [posts, setPosts] = useState([])
-  const [status, setStatus] = useState('loading')
-  const [editing, setEditing] = useState(null)
+  const [posts, setPosts] = useState<Post[]>([])
+  const [status, setStatus] = useState<Status>('loading')
+  const [editing, setEditing] = useState<PostFormData | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [page, setPage] = useState(1)
 
@@ -325,7 +316,7 @@ export default function Posts() {
     api
       .get('/admin/posts', getAdminToken())
       .then((data) => {
-        setPosts(data)
+        setPosts(data as Post[])
         setStatus('ready')
       })
       .catch((err) => {
@@ -349,8 +340,8 @@ export default function Posts() {
     setShowForm(true)
   }
 
-  function openEdit(post) {
-    setEditing({ ...post, publishedAt: post.publishedAt?.slice(0, 10) })
+  function openEdit(post: Post) {
+    setEditing({ ...post, slug: post.slug ?? '', content: post.content ?? '', imageUrl: post.imageUrl ?? '', publishedAt: post.publishedAt?.slice(0, 10) })
     setShowForm(true)
   }
 
@@ -360,13 +351,13 @@ export default function Posts() {
     loadPosts()
   }
 
-  async function handleDelete(post) {
+  async function handleDelete(post: Post) {
     if (!window.confirm(`Excluir o post "${post.title}"? Essa ação não pode ser desfeita.`)) return
     try {
       await api.del(`/admin/posts/${post.id}`, getAdminToken())
       setPosts((prev) => prev.filter((p) => p.id !== post.id))
     } catch (err) {
-      if (!handleError(err)) window.alert(err.message || 'Não foi possível excluir o post.')
+      if (!handleError(err)) window.alert((err as Error).message || 'Não foi possível excluir o post.')
     }
   }
 
@@ -401,7 +392,7 @@ export default function Posts() {
         </>
       )}
 
-      {showForm && (
+      {showForm && editing && (
         <PostForm
           initial={editing}
           onCancel={() => {

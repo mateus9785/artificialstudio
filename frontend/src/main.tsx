@@ -2,13 +2,13 @@ import { StrictMode, Suspense, lazy } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import './index.css'
-import App from './App.jsx'
-import BlogListPage from './BlogListPage.jsx'
-import BlogPostPage from './BlogPostPage.jsx'
-import ServicesPage from './ServicesPage.jsx'
-import AboutPage from './AboutPage.jsx'
+import App from './App'
+import BlogListPage from './BlogListPage'
+import BlogPostPage from './BlogPostPage'
+import ServicesPage from './ServicesPage'
+import AboutPage from './AboutPage'
 
-const AdminApp = lazy(() => import('./admin/AdminApp.jsx'))
+const AdminApp = lazy(() => import('./admin/AdminApp'))
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

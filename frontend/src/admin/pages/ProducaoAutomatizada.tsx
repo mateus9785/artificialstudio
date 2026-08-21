@@ -1,12 +1,13 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type DragEvent, type FormEvent } from 'react'
 import { X, Tag, Trash2 } from 'lucide-react'
 import { api } from '../../lib/api'
 import { getAdminToken } from '../../lib/adminAuth'
 import { useAdminGuard } from '../useAdminGuard'
-import { STATUS_META, STATUS_ORDER, ALLOWED_DRAG_TRANSITIONS } from '../../lib/kanbanMeta'
+import { STATUS_META, STATUS_ORDER, ALLOWED_DRAG_TRANSITIONS, type KanbanStatus } from '../../lib/kanbanMeta'
 import LabelsModal from '../components/LabelsModal'
+import type { KanbanCardData, KanbanLabel, ClaudeUsage } from '../../lib/types'
 
-const inputStyle = {
+const inputStyle: CSSProperties = {
   width: '100%',
   padding: '10px 14px',
   borderRadius: '12px',
@@ -17,28 +18,37 @@ const inputStyle = {
   color: '#e4e4e7',
 }
 
-const selectStyle = {
+const selectStyle: CSSProperties = {
   ...inputStyle,
   colorScheme: 'dark',
   cursor: 'pointer',
 }
 
-const optionStyle = {
+const optionStyle: CSSProperties = {
   background: '#0a0a0a',
   color: '#e4e4e7',
 }
 
-function CardForm({ card, labels, onCancel, onSaved, onManageLabels, onDelete }) {
+interface CardFormProps {
+  card?: KanbanCardData
+  labels: KanbanLabel[]
+  onCancel: () => void
+  onSaved: (card: KanbanCardData) => void
+  onManageLabels: () => void
+  onDelete?: (card: KanbanCardData) => void
+}
+
+function CardForm({ card, labels, onCancel, onSaved, onManageLabels, onDelete }: CardFormProps) {
   const { handleError } = useAdminGuard()
   const isNew = !card
   const [title, setTitle] = useState(card?.title ?? '')
   const [description, setDescription] = useState(card?.description ?? '')
-  const [labelId, setLabelId] = useState(card?.label?.id ?? '')
+  const [labelId, setLabelId] = useState(card?.label?.id !== undefined ? String(card.label.id) : '')
   const [runImmediately, setRunImmediately] = useState(card?.runImmediately ?? false)
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
-  async function handleSubmit(e) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setError('')
     if (!title.trim() || !labelId) {
@@ -52,12 +62,12 @@ function CardForm({ card, labels, onCancel, onSaved, onManageLabels, onDelete })
     setSaving(true)
     try {
       const body = { title: title.trim(), description: description.trim(), labelId: Number(labelId), runImmediately }
-      const saved = isNew
+      const saved = (isNew
         ? await api.post('/admin/kanban/cards', body, getAdminToken())
-        : await api.patch(`/admin/kanban/cards/${card.id}`, body, getAdminToken())
+        : await api.patch(`/admin/kanban/cards/${card.id}`, body, getAdminToken())) as KanbanCardData
       onSaved(saved)
     } catch (err) {
-      if (!handleError(err)) setError(err.message || 'Não foi possível salvar o card.')
+      if (!handleError(err)) setError((err as Error).message || 'Não foi possível salvar o card.')
     } finally {
       setSaving(false)
     }
@@ -65,10 +75,7 @@ function CardForm({ card, labels, onCancel, onSaved, onManageLabels, onDelete })
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.6)' }}>
-      <div
-        className="w-[95vw] max-w-[1400px] max-h-[90vh] overflow-y-auto rounded-2xl p-6"
-        style={{ background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.08)' }}
-      >
+      <div className="w-[95vw] max-w-[1400px] max-h-[90vh] overflow-y-auto rounded-2xl p-6" style={{ background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.08)' }}>
         <div className="flex items-center justify-between mb-5">
           <h3 className="text-base font-semibold" style={{ color: '#f4f4f5' }}>
             {isNew ? 'Novo card' : 'Editar card'}
@@ -92,20 +99,21 @@ function CardForm({ card, labels, onCancel, onSaved, onManageLabels, onDelete })
                 <label className="text-xs font-medium" style={{ color: '#a1a1aa' }}>
                   Etiqueta
                 </label>
-                <button
-                  type="button"
-                  onClick={onManageLabels}
-                  title="Gerenciar etiquetas"
-                  aria-label="Gerenciar etiquetas"
-                  className="cursor-pointer"
-                  style={{ color: '#22d3ee' }}
-                >
+                <button type="button" onClick={onManageLabels} title="Gerenciar etiquetas" aria-label="Gerenciar etiquetas" className="cursor-pointer" style={{ color: '#22d3ee' }}>
                   <Tag size={12} />
                 </button>
               </div>
               <select value={labelId} onChange={(e) => setLabelId(e.target.value)} style={selectStyle}>
-                {labels.length === 0 && <option value="" style={optionStyle}>Nenhuma etiqueta cadastrada</option>}
-                {labels.length > 0 && <option value="" style={optionStyle}>Selecione uma etiqueta</option>}
+                {labels.length === 0 && (
+                  <option value="" style={optionStyle}>
+                    Nenhuma etiqueta cadastrada
+                  </option>
+                )}
+                {labels.length > 0 && (
+                  <option value="" style={optionStyle}>
+                    Selecione uma etiqueta
+                  </option>
+                )}
                 {labels.map((label) => (
                   <option key={label.id} value={label.id} style={optionStyle}>
                     {label.name}
@@ -150,7 +158,7 @@ function CardForm({ card, labels, onCancel, onSaved, onManageLabels, onDelete })
             >
               Cancelar
             </button>
-            {!isNew && (
+            {!isNew && onDelete && (
               <button
                 type="button"
                 onClick={() => onDelete(card)}
@@ -167,13 +175,10 @@ function CardForm({ card, labels, onCancel, onSaved, onManageLabels, onDelete })
   )
 }
 
-function CardView({ card, onClose, onDelete }) {
+function CardView({ card, onClose, onDelete }: { card: KanbanCardData; onClose: () => void; onDelete: (card: KanbanCardData) => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.6)' }}>
-      <div
-        className="w-[95vw] max-w-[1400px] max-h-[90vh] overflow-y-auto rounded-2xl p-6"
-        style={{ background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.08)' }}
-      >
+      <div className="w-[95vw] max-w-[1400px] max-h-[90vh] overflow-y-auto rounded-2xl p-6" style={{ background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.08)' }}>
         <div className="flex items-start justify-between gap-4 mb-5">
           <div className="flex items-center gap-3 flex-wrap min-w-0">
             <h3 className="text-base font-semibold truncate" style={{ color: '#f4f4f5' }}>
@@ -221,7 +226,18 @@ function CardView({ card, onClose, onDelete }) {
 
 const PLAN_PENDING_STATUSES = ['requested', 'planning']
 
-function KanbanCard({ card, onOpen, onArm, onPlan, onDelete, onDragStart, onDragEnd, isDragging }) {
+interface KanbanCardProps {
+  card: KanbanCardData
+  onOpen: (card: KanbanCardData) => void
+  onArm: (card: KanbanCardData) => void
+  onPlan: (card: KanbanCardData) => void
+  onDelete: (card: KanbanCardData) => void
+  onDragStart: (card: KanbanCardData) => void
+  onDragEnd: () => void
+  isDragging: boolean
+}
+
+function KanbanCard({ card, onOpen, onArm, onPlan, onDelete, onDragStart, onDragEnd, isDragging }: KanbanCardProps) {
   return (
     <div
       draggable
@@ -252,10 +268,7 @@ function KanbanCard({ card, onOpen, onArm, onPlan, onDelete, onDragStart, onDrag
         {card.title}
       </p>
       <div className="flex items-center justify-between gap-2 mt-1.5">
-        <span
-          className="inline-block text-xs px-1.5 py-0.5 rounded-md truncate"
-          style={{ background: `${card.label.color}22`, color: card.label.color }}
-        >
+        <span className="inline-block text-xs px-1.5 py-0.5 rounded-md truncate" style={{ background: `${card.label.color}22`, color: card.label.color }}>
           {card.label.name}
         </span>
         <span className="text-xs flex-shrink-0" style={{ color: '#52525b' }}>
@@ -312,19 +325,26 @@ function KanbanCard({ card, onOpen, onArm, onPlan, onDelete, onDragStart, onDrag
   )
 }
 
-function usageBarColor(percent) {
+function usageBarColor(percent: number | null | undefined): string {
   if (percent === null || percent === undefined) return '#3f3f46'
   if (percent >= 90) return '#f87171'
   if (percent >= 70) return '#f59e0b'
   return '#22d3ee'
 }
 
-function formatResetsAt(value) {
+function formatResetsAt(value: string | null | undefined): string | null {
   if (!value) return null
   return new Date(value).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
 }
 
-function UsageBar({ label, shortLabel, percent, resetsAt }) {
+interface UsageBarProps {
+  label: string
+  shortLabel: string
+  percent: number | null
+  resetsAt: string | null
+}
+
+function UsageBar({ label, shortLabel, percent, resetsAt }: UsageBarProps) {
   const hasData = percent !== null && percent !== undefined
   const color = usageBarColor(percent)
   return (
@@ -339,10 +359,7 @@ function UsageBar({ label, shortLabel, percent, resetsAt }) {
         </span>
       </div>
       <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
-        <div
-          className="h-full rounded-full"
-          style={{ width: `${hasData ? Math.min(percent, 100) : 0}%`, background: color, transition: 'width 300ms ease' }}
-        />
+        <div className="h-full rounded-full" style={{ width: `${hasData ? Math.min(percent, 100) : 0}%`, background: color, transition: 'width 300ms ease' }} />
       </div>
       {resetsAt && (
         <p className="text-xs mt-1 truncate" style={{ color: '#52525b' }}>
@@ -354,55 +371,41 @@ function UsageBar({ label, shortLabel, percent, resetsAt }) {
   )
 }
 
-function ClaudeUsagePanel({ usage }) {
+function ClaudeUsagePanel({ usage }: { usage: ClaudeUsage | null }) {
   if (!usage) {
     return (
-      <div
-        className="p-3.5 rounded-xl mb-6 flex-shrink-0 text-xs"
-        style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', color: '#52525b' }}
-      >
+      <div className="p-3.5 rounded-xl mb-6 flex-shrink-0 text-xs" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', color: '#52525b' }}>
         Uso do Claude Code ainda sem dados — aparece assim que o worker rodar o primeiro card.
       </div>
     )
   }
 
   return (
-    <div
-      className="p-3.5 rounded-xl mb-6 flex-shrink-0 flex items-center gap-3 sm:gap-6 flex-nowrap sm:flex-wrap"
-      style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
-    >
-      <UsageBar
-        label="Uso do Claude Code (sessão de 5h)"
-        shortLabel="Sessão (5h)"
-        percent={usage.sessionUsedPercent}
-        resetsAt={usage.sessionResetsAt}
-      />
-      <UsageBar
-        label="Uso do Claude Code (semana)"
-        shortLabel="Semana"
-        percent={usage.weekUsedPercent}
-        resetsAt={usage.weekResetsAt}
-      />
+    <div className="p-3.5 rounded-xl mb-6 flex-shrink-0 flex items-center gap-3 sm:gap-6 flex-nowrap sm:flex-wrap" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+      <UsageBar label="Uso do Claude Code (sessão de 5h)" shortLabel="Sessão (5h)" percent={usage.sessionUsedPercent} resetsAt={usage.sessionResetsAt} />
+      <UsageBar label="Uso do Claude Code (semana)" shortLabel="Semana" percent={usage.weekUsedPercent} resetsAt={usage.weekResetsAt} />
     </div>
   )
 }
 
 const POLL_MS = 3000
 
+type Status = 'loading' | 'ready' | 'error'
+
 export default function ProducaoAutomatizada() {
   const { handleError } = useAdminGuard()
-  const [cards, setCards] = useState([])
-  const [labels, setLabels] = useState([])
-  const [usage, setUsage] = useState(null)
-  const [status, setStatus] = useState('loading')
+  const [cards, setCards] = useState<KanbanCardData[]>([])
+  const [labels, setLabels] = useState<KanbanLabel[]>([])
+  const [usage, setUsage] = useState<ClaudeUsage | null>(null)
+  const [status, setStatus] = useState<Status>('loading')
   const [creating, setCreating] = useState(false)
-  const [viewing, setViewing] = useState(null)
+  const [viewing, setViewing] = useState<KanbanCardData | null>(null)
   const [managingLabels, setManagingLabels] = useState(false)
-  const [dragging, setDragging] = useState(null)
-  const [dragOverColumn, setDragOverColumn] = useState(null)
-  const pollRef = useRef(null)
+  const [dragging, setDragging] = useState<KanbanCardData | null>(null)
+  const [dragOverColumn, setDragOverColumn] = useState<KanbanStatus | null>(null)
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  function loadAll({ silent } = {}) {
+  function loadAll({ silent = false }: { silent?: boolean } = {}) {
     if (!silent) setStatus('loading')
     Promise.all([
       api.get('/admin/kanban/cards', getAdminToken()),
@@ -410,9 +413,9 @@ export default function ProducaoAutomatizada() {
       api.get('/admin/kanban/claude-usage', getAdminToken()),
     ])
       .then(([cardsData, labelsData, usageData]) => {
-        setCards(cardsData)
-        setLabels(labelsData)
-        setUsage(usageData)
+        setCards(cardsData as KanbanCardData[])
+        setLabels(labelsData as KanbanLabel[])
+        setUsage(usageData as ClaudeUsage | null)
         setStatus('ready')
       })
       .catch((err) => {
@@ -423,46 +426,48 @@ export default function ProducaoAutomatizada() {
   useEffect(() => {
     loadAll()
     pollRef.current = setInterval(() => loadAll({ silent: true }), POLL_MS)
-    return () => clearInterval(pollRef.current)
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  function handleSaved(saved) {
+  function handleSaved(saved: KanbanCardData) {
     setCreating(false)
     setViewing(null)
     setCards((prev) => (prev.some((c) => c.id === saved.id) ? prev.map((c) => (c.id === saved.id ? saved : c)) : [...prev, saved]))
   }
 
-  async function handleArm(card) {
+  async function handleArm(card: KanbanCardData) {
     try {
-      const saved = await api.post(`/admin/kanban/cards/${card.id}/arm`, {}, getAdminToken())
+      const saved = (await api.post(`/admin/kanban/cards/${card.id}/arm`, {}, getAdminToken())) as KanbanCardData
       setCards((prev) => prev.map((c) => (c.id === saved.id ? saved : c)))
     } catch (err) {
-      if (!handleError(err)) window.alert(err.message || 'Não foi possível armar o card.')
+      if (!handleError(err)) window.alert((err as Error).message || 'Não foi possível armar o card.')
     }
   }
 
-  async function handlePlan(card) {
+  async function handlePlan(card: KanbanCardData) {
     try {
-      const saved = await api.post(`/admin/kanban/cards/${card.id}/request-plan`, {}, getAdminToken())
+      const saved = (await api.post(`/admin/kanban/cards/${card.id}/request-plan`, {}, getAdminToken())) as KanbanCardData
       setCards((prev) => prev.map((c) => (c.id === saved.id ? saved : c)))
     } catch (err) {
-      if (!handleError(err)) window.alert(err.message || 'Não foi possível planejar o card.')
+      if (!handleError(err)) window.alert((err as Error).message || 'Não foi possível planejar o card.')
     }
   }
 
-  async function handleDelete(card) {
+  async function handleDelete(card: KanbanCardData) {
     if (!window.confirm(`Excluir o card "${card.title}"?`)) return
     try {
       await api.del(`/admin/kanban/cards/${card.id}`, getAdminToken())
       setCards((prev) => prev.filter((c) => c.id !== card.id))
       setViewing(null)
     } catch (err) {
-      if (!handleError(err)) window.alert(err.message || 'Não foi possível excluir o card.')
+      if (!handleError(err)) window.alert((err as Error).message || 'Não foi possível excluir o card.')
     }
   }
 
-  async function moveCard(card, targetStatus) {
+  async function moveCard(card: KanbanCardData, targetStatus: KanbanStatus) {
     const allowed = ALLOWED_DRAG_TRANSITIONS[card.status] || []
     if (!allowed.includes(targetStatus)) {
       window.alert('Só é possível mover cards de "Erro" para "Para Fazer", ou de "Fazendo" para "Concluído".')
@@ -472,15 +477,15 @@ export default function ProducaoAutomatizada() {
     setCards((prev) => prev.map((c) => (c.id === card.id ? { ...c, status: targetStatus } : c)))
     try {
       const action = card.status === 'error' ? 'retry' : 'complete'
-      const saved = await api.post(`/admin/kanban/cards/${card.id}/${action}`, {}, getAdminToken())
+      const saved = (await api.post(`/admin/kanban/cards/${card.id}/${action}`, {}, getAdminToken())) as KanbanCardData
       setCards((prev) => prev.map((c) => (c.id === saved.id ? saved : c)))
     } catch (err) {
       setCards(previous)
-      if (!handleError(err)) window.alert(err.message || 'Não foi possível mover o card.')
+      if (!handleError(err)) window.alert((err as Error).message || 'Não foi possível mover o card.')
     }
   }
 
-  function handleDrop(columnStatus) {
+  function handleDrop(columnStatus: KanbanStatus) {
     setDragOverColumn(null)
     if (dragging) moveCard(dragging, columnStatus)
     setDragging(null)
@@ -523,7 +528,7 @@ export default function ProducaoAutomatizada() {
             return (
               <div
                 key={columnStatus}
-                onDragOver={(e) => {
+                onDragOver={(e: DragEvent) => {
                   e.preventDefault()
                   setDragOverColumn(columnStatus)
                 }}
@@ -540,10 +545,7 @@ export default function ProducaoAutomatizada() {
                   <span className="text-xs font-medium flex-1" style={{ color: '#d4d4d8' }}>
                     {meta.label}
                   </span>
-                  <span
-                    className="text-xs font-semibold px-1.5 py-0.5 rounded-md flex-shrink-0"
-                    style={{ background: `${meta.color}14`, color: meta.color }}
-                  >
+                  <span className="text-xs font-semibold px-1.5 py-0.5 rounded-md flex-shrink-0" style={{ background: `${meta.color}14`, color: meta.color }}>
                     {columnCards.length}
                   </span>
                 </div>
@@ -574,33 +576,15 @@ export default function ProducaoAutomatizada() {
         </div>
       )}
 
-      {creating && (
-        <CardForm
-          labels={labels}
-          onCancel={() => setCreating(false)}
-          onSaved={handleSaved}
-          onManageLabels={() => setManagingLabels(true)}
-        />
-      )}
+      {creating && <CardForm labels={labels} onCancel={() => setCreating(false)} onSaved={handleSaved} onManageLabels={() => setManagingLabels(true)} />}
 
       {viewing && viewing.status === 'todo' && (
-        <CardForm
-          card={viewing}
-          labels={labels}
-          onCancel={() => setViewing(null)}
-          onSaved={handleSaved}
-          onManageLabels={() => setManagingLabels(true)}
-          onDelete={handleDelete}
-        />
+        <CardForm card={viewing} labels={labels} onCancel={() => setViewing(null)} onSaved={handleSaved} onManageLabels={() => setManagingLabels(true)} onDelete={handleDelete} />
       )}
 
-      {viewing && viewing.status !== 'todo' && (
-        <CardView card={viewing} onClose={() => setViewing(null)} onDelete={handleDelete} />
-      )}
+      {viewing && viewing.status !== 'todo' && <CardView card={viewing} onClose={() => setViewing(null)} onDelete={handleDelete} />}
 
-      {managingLabels && (
-        <LabelsModal labels={labels} onClose={() => setManagingLabels(false)} onLabelsChanged={setLabels} />
-      )}
+      {managingLabels && <LabelsModal labels={labels} onClose={() => setManagingLabels(false)} onLabelsChanged={setLabels} />}
     </div>
   )
 }

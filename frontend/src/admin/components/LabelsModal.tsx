@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useState, type CSSProperties, type FormEvent } from 'react'
 import { X, Trash2 } from 'lucide-react'
 import { api } from '../../lib/api'
 import { getAdminToken } from '../../lib/adminAuth'
 import { useAdminGuard } from '../useAdminGuard'
+import type { KanbanLabel } from '../../lib/types'
 
-const inputStyle = {
+const inputStyle: CSSProperties = {
   width: '100%',
   padding: '10px 14px',
   borderRadius: '12px',
@@ -17,79 +18,74 @@ const inputStyle = {
 
 const DEFAULT_COLOR = '#22d3ee'
 
-const COLOR_PRESETS = [
-  '#22d3ee', '#7c3aed', '#f472b6', '#f59e0b',
-  '#22c55e', '#ef4444', '#3b82f6', '#a1a1aa',
-]
+const COLOR_PRESETS = ['#22d3ee', '#7c3aed', '#f472b6', '#f59e0b', '#22c55e', '#ef4444', '#3b82f6', '#a1a1aa']
 
-function ColorSwatchInput({ value, onChange, size = 20 }) {
+function ColorSwatchInput({ value, onChange, size = 20 }: { value: string; onChange: (value: string) => void; size?: number }) {
   return (
     <label
       className="relative rounded-full cursor-pointer flex-shrink-0"
       style={{ width: size, height: size, background: value, border: '1px solid rgba(255,255,255,0.2)' }}
     >
-      <input
-        type="color"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="absolute inset-0 opacity-0 cursor-pointer"
-      />
+      <input type="color" value={value} onChange={(e) => onChange(e.target.value)} className="absolute inset-0 opacity-0 cursor-pointer" />
     </label>
   )
 }
 
-export default function LabelsModal({ labels, onClose, onLabelsChanged }) {
+interface LabelsModalProps {
+  labels: KanbanLabel[]
+  onClose: () => void
+  onLabelsChanged: (labels: KanbanLabel[]) => void
+}
+
+export default function LabelsModal({ labels, onClose, onLabelsChanged }: LabelsModalProps) {
   const { handleError } = useAdminGuard()
   const [name, setName] = useState('')
   const [color, setColor] = useState(DEFAULT_COLOR)
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
 
-  async function handleCreate(e) {
+  async function handleCreate(e: FormEvent) {
     e.preventDefault()
     setError('')
     if (!name.trim()) return
     setSaving(true)
     try {
-      const created = await api.post('/admin/kanban/labels', { name: name.trim(), color }, getAdminToken())
+      const created = (await api.post('/admin/kanban/labels', { name: name.trim(), color }, getAdminToken())) as KanbanLabel
       onLabelsChanged([...labels, created])
       setName('')
       setColor(DEFAULT_COLOR)
     } catch (err) {
-      if (!handleError(err)) setError(err.message || 'Não foi possível criar a etiqueta.')
+      if (!handleError(err)) setError((err as Error).message || 'Não foi possível criar a etiqueta.')
     } finally {
       setSaving(false)
     }
   }
 
-  async function handleDelete(label) {
+  async function handleDelete(label: KanbanLabel) {
     setError('')
     try {
       await api.del(`/admin/kanban/labels/${label.id}`, getAdminToken())
       onLabelsChanged(labels.filter((l) => l.id !== label.id))
     } catch (err) {
-      if (!handleError(err)) setError(err.message || 'Não foi possível excluir a etiqueta.')
+      if (!handleError(err)) setError((err as Error).message || 'Não foi possível excluir a etiqueta.')
     }
   }
 
-  async function handleColorChange(label, newColor) {
+  async function handleColorChange(label: KanbanLabel, newColor: string) {
     setError('')
     onLabelsChanged(labels.map((l) => (l.id === label.id ? { ...l, color: newColor } : l)))
     try {
-      const updated = await api.patch(`/admin/kanban/labels/${label.id}`, { color: newColor }, getAdminToken())
+      const updated = (await api.patch(`/admin/kanban/labels/${label.id}`, { color: newColor }, getAdminToken())) as KanbanLabel
       onLabelsChanged(labels.map((l) => (l.id === label.id ? updated : l)))
     } catch (err) {
       onLabelsChanged(labels)
-      if (!handleError(err)) setError(err.message || 'Não foi possível atualizar a cor.')
+      if (!handleError(err)) setError((err as Error).message || 'Não foi possível atualizar a cor.')
     }
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.6)' }}>
-      <div
-        className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl p-6"
-        style={{ background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.08)' }}
-      >
+      <div className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl p-6" style={{ background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.08)' }}>
         <div className="flex items-center justify-between mb-5">
           <h3 className="text-base font-semibold" style={{ color: '#f4f4f5' }}>
             Gerenciar etiquetas
@@ -107,12 +103,7 @@ export default function LabelsModal({ labels, onClose, onLabelsChanged }) {
         <form onSubmit={handleCreate} className="flex flex-col gap-3 mb-4">
           <div className="flex gap-2">
             <ColorSwatchInput value={color} onChange={setColor} size={38} />
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="nome-da-pasta"
-              style={{ ...inputStyle, flex: 1 }}
-            />
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="nome-da-pasta" style={{ ...inputStyle, flex: 1 }} />
             <button
               type="submit"
               disabled={saving}
@@ -154,11 +145,7 @@ export default function LabelsModal({ labels, onClose, onLabelsChanged }) {
             </p>
           )}
           {labels.map((label) => (
-            <div
-              key={label.id}
-              className="flex items-center justify-between px-3 py-2 rounded-xl"
-              style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
-            >
+            <div key={label.id} className="flex items-center justify-between px-3 py-2 rounded-xl" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
               <div className="flex items-center gap-2.5">
                 <ColorSwatchInput value={label.color || DEFAULT_COLOR} onChange={(c) => handleColorChange(label, c)} />
                 <span className="text-sm" style={{ color: '#d4d4d8' }}>

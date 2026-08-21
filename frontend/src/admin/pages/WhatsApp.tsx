@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type ChangeEvent, type FormEvent, type KeyboardEvent, type ReactNode } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import {
   Send,
@@ -19,6 +19,7 @@ import {
   ClipboardList,
   MessageSquarePlus,
   PenLine,
+  type LucideIcon,
 } from 'lucide-react'
 import { api, API_URL } from '../../lib/api'
 import { getAdminToken } from '../../lib/adminAuth'
@@ -30,19 +31,113 @@ const STATUS_POLL_MS = 3000
 const CONVERSATIONS_POLL_MS = 5000
 const DETAIL_POLL_MS = 3000
 
-function resolveMediaUrl(url) {
+type ConnectionStatus = 'disconnected' | 'pending_auth' | 'connected'
+
+interface ConnectionState {
+  status: ConnectionStatus
+  qr: string | null
+  phoneNumber: string | null
+}
+
+type SuggestionStatus = 'pending' | 'running' | 'draft' | 'error'
+type SuggestionKind = 'reply' | 'cold_outreach'
+type QuoteMarker = 'none' | 'presented' | 'confirmed'
+
+interface Suggestion {
+  id: number
+  kind: SuggestionKind
+  status: SuggestionStatus
+  suggestedText: string | null
+  quoteMarker: QuoteMarker
+  error: string | null
+  createdAt: string
+}
+
+// Espelha o array retornado por GET /admin/whatsapp/conversations em backend/src/routes/whatsapp.routes.ts.
+interface ConversationSummary {
+  id: number
+  displayName: string | null
+  avatarUrl: string | null
+  phoneNumber: string | null
+  lastMessage: string | null
+  lastMessageAt: string | null
+  unreadCount: number
+  aiEnabled: boolean
+  suggestionStatus: SuggestionStatus | null
+  isLead: true
+}
+
+type MessageDirection = 'inbound' | 'outbound'
+type MessageStatus = 'queued' | 'sent' | 'delivered' | 'failed'
+
+interface WhatsAppMessage {
+  id: number
+  direction: MessageDirection
+  status: MessageStatus
+  text: string | null
+  isManual: boolean | number
+  attachmentType: string | null
+  attachmentUrl: string | null
+  attachmentMime: string | null
+  sentAt: string
+}
+
+// Subconjunto de campos de ScoutLead (ver lib/types.ts) que a rota de detalhe da
+// conversa devolve via join direto — não o serializeLead() completo.
+interface ConversationLead {
+  id: number
+  name: string
+  category: string | null
+  city: string | null
+  state: string | null
+  fitScore: number | null
+  segmento: string | null
+  resumo: string | null
+  ganchoAbordagem: string | null
+}
+
+interface CollectedData {
+  nome?: string | null
+  empresa?: string | null
+  contato?: string | null
+  tipo_de_servico?: string | null
+  estagio?: string | null
+  requisitos?: string[] | null
+  observacoes?: string | null
+  kanban_card_id?: number | null
+}
+
+interface ConversationDetailData {
+  id: number
+  jid: string
+  displayName: string | null
+  avatarUrl: string | null
+  phoneNumber: string | null
+  aiEnabled: boolean
+  collectedData: CollectedData | null
+  historySyncing: boolean
+}
+
+interface ConversationDetail {
+  conversation: ConversationDetailData
+  messages: WhatsAppMessage[]
+  suggestion: Suggestion | null
+  lead: ConversationLead | null
+}
+
+function resolveMediaUrl(url: string | null | undefined): string | null {
   if (!url) return null
   if (/^https?:\/\//.test(url)) return url
   return `${new URL(API_URL).origin}${url}`
 }
 
-const MESSAGE_STATUS_ICON = {
+const MESSAGE_STATUS_ICON: Partial<Record<MessageStatus, LucideIcon>> = {
   queued: Clock,
   sent: CheckCheck,
   failed: AlertTriangle,
 }
 
-function ContactAvatar({ avatarUrl, size = 36, iconSize = 16 }) {
+function ContactAvatar({ avatarUrl, size = 36, iconSize = 16 }: { avatarUrl: string | null | undefined; size?: number; iconSize?: number }) {
   const resolvedUrl = resolveMediaUrl(avatarUrl)
   return (
     <div
@@ -58,7 +153,13 @@ function ContactAvatar({ avatarUrl, size = 36, iconSize = 16 }) {
   )
 }
 
-function ConnectScreen({ connectionStatus, qr, onConnect }) {
+interface ConnectScreenProps {
+  connectionStatus: ConnectionStatus | undefined
+  qr: string | null | undefined
+  onConnect: () => void
+}
+
+function ConnectScreen({ connectionStatus, qr, onConnect }: ConnectScreenProps) {
   return (
     <div className="flex-1 flex flex-col items-center justify-center gap-4 p-8 text-center">
       {connectionStatus === 'pending_auth' && qr ? (
@@ -91,8 +192,17 @@ function ConnectScreen({ connectionStatus, qr, onConnect }) {
   )
 }
 
+interface SuggestionPanelProps {
+  suggestion: Suggestion | null | undefined
+  busy: boolean
+  onApprove: () => void
+  onEdit: () => void
+  onRegenerate: () => void
+  onDiscard: () => void
+}
+
 /** Rascunho da IA aguardando o admin — nada é enviado sem clique. */
-function SuggestionPanel({ suggestion, busy, onApprove, onEdit, onRegenerate, onDiscard }) {
+function SuggestionPanel({ suggestion, busy, onApprove, onEdit, onRegenerate, onDiscard }: SuggestionPanelProps) {
   if (!suggestion) return null
 
   const isGenerating = suggestion.status === 'pending' || suggestion.status === 'running'
@@ -176,7 +286,7 @@ function SuggestionPanel({ suggestion, busy, onApprove, onEdit, onRegenerate, on
   )
 }
 
-const ESTAGIO_LABEL = {
+const ESTAGIO_LABEL: Record<string, string> = {
   sondagem: 'Sondagem',
   revelacao: 'Revelação',
   abertura: 'Abertura',
@@ -187,29 +297,43 @@ const ESTAGIO_LABEL = {
   encerrado: 'Encerrado',
 }
 
+interface RowProps {
+  label: string
+  value: ReactNode
+}
+
+function Row({ label, value }: RowProps) {
+  if (value === null || value === undefined || value === '') return null
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="text-[10px] uppercase tracking-wide" style={{ color: '#52525b' }}>
+        {label}
+      </span>
+      <span className="text-xs leading-relaxed" style={{ color: '#d4d4d8' }}>
+        {value}
+      </span>
+    </div>
+  )
+}
+
+interface CollectedDataPanelProps {
+  collectedData: CollectedData | null | undefined
+  lead: ConversationLead | null | undefined
+  collapsed: boolean
+  onToggleCollapse: () => void
+}
+
 /**
  * Painel lateral com os dados que a IA coleta durante a conversa (nome, empresa,
  * contato, requisitos...) — mesmo papel do QuotePanel da tela Conversas IA — e,
  * quando o contato é lead do pegasus-scout, os dados de prospecção. Faz acordeão
  * com o painel de Prospecção: abrir um colapsa o outro.
  */
-function CollectedDataPanel({ collectedData, lead, collapsed, onToggleCollapse }) {
+function CollectedDataPanel({ collectedData, lead, collapsed, onToggleCollapse }: CollectedDataPanelProps) {
   const data = collectedData || {}
   const hasCollected = Object.entries(data).some(
     ([key, value]) => key !== 'kanban_card_id' && value !== null && value !== undefined && (!Array.isArray(value) || value.length > 0),
   )
-
-  const Row = ({ label, value }) =>
-    value === null || value === undefined || value === '' ? null : (
-      <div className="flex flex-col gap-0.5">
-        <span className="text-[10px] uppercase tracking-wide" style={{ color: '#52525b' }}>
-          {label}
-        </span>
-        <span className="text-xs leading-relaxed" style={{ color: '#d4d4d8' }}>
-          {value}
-        </span>
-      </div>
-    )
 
   return (
     <div
@@ -265,7 +389,7 @@ function CollectedDataPanel({ collectedData, lead, collapsed, onToggleCollapse }
           <Row label="Empresa" value={data.empresa} />
           <Row label="Contato" value={data.contato} />
           <Row label="Tipo de serviço" value={data.tipo_de_servico} />
-          <Row label="Estágio" value={ESTAGIO_LABEL[data.estagio] || data.estagio} />
+          <Row label="Estágio" value={(data.estagio && ESTAGIO_LABEL[data.estagio]) || data.estagio} />
           {Array.isArray(data.requisitos) && data.requisitos.length > 0 && (
             <div className="flex flex-col gap-0.5">
               <span className="text-[10px] uppercase tracking-wide" style={{ color: '#52525b' }}>
@@ -289,10 +413,10 @@ function CollectedDataPanel({ collectedData, lead, collapsed, onToggleCollapse }
 
 export default function WhatsApp() {
   const { handleError } = useAdminGuard()
-  const [connection, setConnection] = useState(null)
-  const [conversations, setConversations] = useState([])
-  const [selectedId, setSelectedId] = useState(null)
-  const [detail, setDetail] = useState(null)
+  const [connection, setConnection] = useState<ConnectionState | null>(null)
+  const [conversations, setConversations] = useState<ConversationSummary[]>([])
+  const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [detail, setDetail] = useState<ConversationDetail | null>(null)
   const [reply, setReply] = useState('')
   const [sending, setSending] = useState(false)
   const [triggeringSync, setTriggeringSync] = useState(false)
@@ -300,12 +424,12 @@ export default function WhatsApp() {
   const [suggestionBusy, setSuggestionBusy] = useState(false)
   // Sugestão que o admin mandou para o input via "Editar": o envio do form passa
   // pela rota de aprovação (grava final_text) em vez do envio comum.
-  const [editingSuggestionId, setEditingSuggestionId] = useState(null)
+  const [editingSuggestionId, setEditingSuggestionId] = useState<number | null>(null)
   // Acordeão da coluna direita: exatamente um painel aberto por vez —
   // 'dados' (dados do contato/lead) ou 'scout' (Prospecção).
-  const [openPanel, setOpenPanel] = useState('scout')
-  const messagesEndRef = useRef(null)
-  const replyTextareaRef = useRef(null)
+  const [openPanel, setOpenPanel] = useState<'dados' | 'scout'>('scout')
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const replyTextareaRef = useRef<HTMLTextAreaElement>(null)
 
   // O crescimento do textarea é feito imperativamente (style.height) no onChange
   // pra acompanhar o texto digitado; quando o campo é limpo por fora (enviou,
@@ -319,7 +443,7 @@ export default function WhatsApp() {
   const loadStatus = useCallback(() => {
     api
       .get('/admin/whatsapp/status', getAdminToken())
-      .then(setConnection)
+      .then((data) => setConnection(data as ConnectionState))
       .catch((err) => handleError(err))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -335,7 +459,7 @@ export default function WhatsApp() {
   const loadConversations = useCallback(() => {
     api
       .get('/admin/whatsapp/conversations', getAdminToken())
-      .then(setConversations)
+      .then((data) => setConversations(data as ConversationSummary[]))
       .catch((err) => handleError(err))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -347,10 +471,10 @@ export default function WhatsApp() {
     return () => clearInterval(interval)
   }, [isConnected, loadConversations])
 
-  const loadDetail = useCallback((id) => {
+  const loadDetail = useCallback((id: number) => {
     api
       .get(`/admin/whatsapp/conversations/${id}`, getAdminToken())
-      .then(setDetail)
+      .then((data) => setDetail(data as ConversationDetail))
       .catch((err) => handleError(err))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -370,7 +494,7 @@ export default function WhatsApp() {
 
   // Clicar num cabeçalho abre aquele painel e colapsa o outro; clicar no que já
   // está aberto inverte — sempre exatamente um aberto.
-  function togglePanel(name) {
+  function togglePanel(name: 'dados' | 'scout') {
     setOpenPanel((prev) => (prev === name ? (name === 'dados' ? 'scout' : 'dados') : name))
   }
 
@@ -378,7 +502,7 @@ export default function WhatsApp() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [detail?.messages?.length])
 
-  function handleStartConversation(conversationId, draftText) {
+  function handleStartConversation(conversationId: number, draftText: string) {
     setSelectedId(conversationId)
     setReply(draftText || '')
     loadConversations()
@@ -393,7 +517,7 @@ export default function WhatsApp() {
     }
   }
 
-  async function sendReply(e) {
+  async function sendReply(e: FormEvent) {
     e.preventDefault()
     const text = reply.trim()
     if (!text || !selectedId || sending) return
@@ -416,7 +540,7 @@ export default function WhatsApp() {
   }
 
   async function approveSuggestion() {
-    if (!detail?.suggestion || suggestionBusy) return
+    if (!detail?.suggestion || suggestionBusy || !selectedId) return
     setSuggestionBusy(true)
     try {
       await api.post(`/admin/whatsapp/suggestions/${detail.suggestion.id}/approve`, {}, getAdminToken())
@@ -450,7 +574,7 @@ export default function WhatsApp() {
   }
 
   async function discardSuggestion() {
-    if (!detail?.suggestion || suggestionBusy) return
+    if (!detail?.suggestion || suggestionBusy || !selectedId) return
     setSuggestionBusy(true)
     setEditingSuggestionId(null)
     try {
@@ -533,7 +657,9 @@ export default function WhatsApp() {
                         </span>
                         <span className="flex items-center gap-1 flex-shrink-0">
                           {c.suggestionStatus === 'draft' && (
-                            <Sparkles size={11} style={{ color: '#22d3ee' }} title="Sugestão da IA pronta" />
+                            <span title="Sugestão da IA pronta">
+                              <Sparkles size={11} style={{ color: '#22d3ee' }} />
+                            </span>
                           )}
                           {(c.suggestionStatus === 'pending' || c.suggestionStatus === 'running') && (
                             <RefreshCw size={11} className="animate-spin" style={{ color: '#71717a' }} />
@@ -726,12 +852,12 @@ export default function WhatsApp() {
                     <textarea
                       ref={replyTextareaRef}
                       value={reply}
-                      onChange={(e) => {
+                      onChange={(e: ChangeEvent<HTMLTextAreaElement>) => {
                         setReply(e.target.value)
                         e.target.style.height = 'auto'
                         e.target.style.height = `${e.target.scrollHeight}px`
                       }}
-                      onKeyDown={(e) => {
+                      onKeyDown={(e: KeyboardEvent<HTMLTextAreaElement>) => {
                         if (e.key === 'Enter' && !e.shiftKey) {
                           e.preventDefault()
                           sendReply(e)

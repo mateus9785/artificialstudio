@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { Send, Bot, User, Headset, AlertTriangle, KanbanSquare, Sparkles } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from 'react'
+import { Send, Bot, User, Headset, AlertTriangle, KanbanSquare, Sparkles, type LucideIcon } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { api } from '../../lib/api'
 import { getAdminToken } from '../../lib/adminAuth'
@@ -8,13 +8,84 @@ import { useAdminGuard } from '../useAdminGuard'
 const CONVERSATIONS_POLL_MS = 5000
 const DETAIL_POLL_MS = 3000
 
-const QUOTE_BADGE = {
+type QuoteStatus = 'none' | 'presented' | 'confirmed'
+type Sender = 'visitor' | 'ai' | 'admin'
+type JobStatus = 'pending' | 'running' | 'done' | 'error'
+
+interface ConversationSummary {
+  id: number
+  sessionId: string
+  visitorName: string | null
+  visitorContact: string | null
+  status: string
+  mode: 'ai' | 'human'
+  quoteStatus: QuoteStatus
+  updatedAt: string
+  lastMessage: string | null
+  unreadCount: number
+  visitorTurns: number
+  kanbanCardId: number | null
+  failedJobs: number
+}
+
+interface ChatMessage {
+  id: number
+  sender: Sender
+  text: string
+  createdAt: string
+}
+
+interface ChatJob {
+  id: number
+  kind: 'reply' | 'quote'
+  status: JobStatus
+  error: string | null
+  createdAt: string
+}
+
+interface ChatQuote {
+  id: number
+  projectName: string
+  clientName: string | null
+  companyName: string | null
+  contact: string | null
+  serviceType: string | null
+  summary: string | null
+  requirements: string[]
+  integrations: string[]
+  priceMin: number | null
+  priceMax: number | null
+  monthly: number | null
+  timelineWeeks: string | null
+  paymentTerms: string | null
+  status: string
+  kanbanCardId: number | null
+  createdAt: string
+}
+
+interface ConversationDetail {
+  conversation: {
+    id: number
+    sessionId: string
+    visitorName: string | null
+    visitorContact: string | null
+    mode: 'ai' | 'human'
+    quoteStatus: QuoteStatus
+    createdAt: string
+    updatedAt: string
+  }
+  messages: ChatMessage[]
+  quote: ChatQuote | null
+  jobs: ChatJob[]
+}
+
+const QUOTE_BADGE: Record<QuoteStatus, { label: string; color: string } | null> = {
   none: null,
   presented: { label: 'Orçamento enviado', color: '#f59e0b' },
   confirmed: { label: 'Fechado', color: '#22c55e' },
 }
 
-const SENDER_STYLE = {
+const SENDER_STYLE: Record<Sender, { icon: LucideIcon; align: string; iconColor: string; bubble: CSSProperties }> = {
   visitor: {
     icon: User,
     align: 'self-start',
@@ -35,20 +106,20 @@ const SENDER_STYLE = {
   },
 }
 
-function money(value) {
+function money(value: number | null | undefined): string | null {
   if (value === null || value === undefined) return null
   return Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
-function priceLabel(quote) {
+function priceLabel(quote: ChatQuote): string {
   const min = money(quote.priceMin)
   const max = money(quote.priceMax)
   if (!min && !max) return '—'
-  if (!max || min === max) return min || max
+  if (!max || min === max) return (min || max) as string
   return `${min} a ${max}`
 }
 
-function Field({ label, children }) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
   if (!children) return null
   return (
     <div>
@@ -62,7 +133,7 @@ function Field({ label, children }) {
   )
 }
 
-function QuotePanel({ quote }) {
+function QuotePanel({ quote }: { quote: ChatQuote | null }) {
   if (!quote) {
     return (
       <p className="text-xs p-4" style={{ color: '#52525b' }}>
@@ -130,11 +201,7 @@ function QuotePanel({ quote }) {
           </p>
           <div className="flex flex-wrap gap-1.5">
             {quote.integrations.map((item, i) => (
-              <span
-                key={i}
-                className="text-xs px-2 py-0.5 rounded-full"
-                style={{ background: 'rgba(168,85,247,0.12)', color: '#c4b5fd' }}
-              >
+              <span key={i} className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'rgba(168,85,247,0.12)', color: '#c4b5fd' }}>
                 {item}
               </span>
             ))}
@@ -147,16 +214,16 @@ function QuotePanel({ quote }) {
 
 export default function ConversasIA() {
   const { handleError } = useAdminGuard()
-  const [conversations, setConversations] = useState([])
-  const [selectedId, setSelectedId] = useState(null)
-  const [detail, setDetail] = useState(null)
+  const [conversations, setConversations] = useState<ConversationSummary[]>([])
+  const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [detail, setDetail] = useState<ConversationDetail | null>(null)
   const [reply, setReply] = useState('')
-  const messagesEndRef = useRef(null)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const loadConversations = useCallback(() => {
     api
       .get('/admin/chat/conversations', getAdminToken())
-      .then(setConversations)
+      .then((data) => setConversations(data as ConversationSummary[]))
       .catch((err) => handleError(err))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -169,10 +236,10 @@ export default function ConversasIA() {
 
   // `handleError` fica fora das dependências de propósito: ele é recriado a cada render pelo
   // useAdminGuard, e incluí-lo faria o useEffect abaixo recriar o setInterval a cada render.
-  const loadDetail = useCallback((id) => {
+  const loadDetail = useCallback((id: number) => {
     api
       .get(`/admin/chat/conversations/${id}`, getAdminToken())
-      .then(setDetail)
+      .then((data) => setDetail(data as ConversationDetail))
       .catch((err) => handleError(err))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -190,6 +257,7 @@ export default function ConversasIA() {
   }, [detail?.messages?.length])
 
   async function toggleMode() {
+    if (!detail || !selectedId) return
     const next = detail.conversation.mode === 'ai' ? 'human' : 'ai'
     try {
       await api.post(`/admin/chat/conversations/${selectedId}/mode`, { mode: next }, getAdminToken())
@@ -199,7 +267,7 @@ export default function ConversasIA() {
     }
   }
 
-  async function sendReply(e) {
+  async function sendReply(e: FormEvent) {
     e.preventDefault()
     const text = reply.trim()
     if (!text || !selectedId) return
@@ -227,10 +295,7 @@ export default function ConversasIA() {
       </p>
 
       <div className="flex flex-col xl:grid xl:grid-cols-[280px_1fr_320px] gap-4 xl:h-[72vh]">
-        <div
-          className="h-48 xl:h-auto flex-shrink-0 rounded-xl overflow-y-auto"
-          style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
-        >
+        <div className="h-48 xl:h-auto flex-shrink-0 rounded-xl overflow-y-auto" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
           {conversations.length === 0 && (
             <p className="text-xs p-4" style={{ color: '#52525b' }}>
               Nenhuma conversa ainda.
@@ -256,10 +321,7 @@ export default function ConversasIA() {
                     {c.failedJobs > 0 && <AlertTriangle size={12} style={{ color: '#ef4444' }} />}
                     {c.mode === 'human' && <Headset size={12} style={{ color: '#f59e0b' }} />}
                     {c.unreadCount > 0 && (
-                      <span
-                        className="text-xs px-1.5 rounded-full"
-                        style={{ background: '#22d3ee', color: '#050505' }}
-                      >
+                      <span className="text-xs px-1.5 rounded-full" style={{ background: '#22d3ee', color: '#050505' }}>
                         {c.unreadCount}
                       </span>
                     )}
@@ -270,10 +332,7 @@ export default function ConversasIA() {
                 </span>
                 <div className="flex items-center gap-1.5 flex-wrap">
                   {badge && (
-                    <span
-                      className="text-[10px] px-1.5 py-0.5 rounded-full"
-                      style={{ background: `${badge.color}20`, color: badge.color }}
-                    >
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: `${badge.color}20`, color: badge.color }}>
                       {badge.label}
                     </span>
                   )}
@@ -286,10 +345,7 @@ export default function ConversasIA() {
           })}
         </div>
 
-        <div
-          className="h-[60vh] xl:h-auto flex-1 min-h-0 rounded-xl flex flex-col overflow-hidden"
-          style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
-        >
+        <div className="h-[60vh] xl:h-auto flex-1 min-h-0 rounded-xl flex flex-col overflow-hidden" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
           {!detail ? (
             <div className="flex-1 flex items-center justify-center">
               <p className="text-sm" style={{ color: '#52525b' }}>
@@ -298,10 +354,7 @@ export default function ConversasIA() {
             </div>
           ) : (
             <>
-              <div
-                className="px-4 py-3 flex items-center justify-between gap-3 flex-shrink-0"
-                style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
-              >
+              <div className="px-4 py-3 flex items-center justify-between gap-3 flex-shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
                 <div className="min-w-0">
                   <p className="text-sm font-medium truncate" style={{ color: '#e4e4e7' }}>
                     {detail.conversation.visitorName || `Visitante ${detail.conversation.sessionId.slice(0, 8)}`}
@@ -315,11 +368,7 @@ export default function ConversasIA() {
                 <button
                   onClick={toggleMode}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer flex-shrink-0"
-                  style={
-                    isHuman
-                      ? { background: 'rgba(245,158,11,0.15)', color: '#f59e0b' }
-                      : { background: 'rgba(34,211,238,0.1)', color: '#22d3ee' }
-                  }
+                  style={isHuman ? { background: 'rgba(245,158,11,0.15)', color: '#f59e0b' } : { background: 'rgba(34,211,238,0.1)', color: '#22d3ee' }}
                   title={isHuman ? 'A IA está pausada nesta conversa' : 'A IA está respondendo esta conversa'}
                 >
                   {isHuman ? <Headset size={13} /> : <Bot size={13} />}
@@ -328,10 +377,7 @@ export default function ConversasIA() {
               </div>
 
               {failedJob && (
-                <div
-                  className="px-4 py-2 flex items-start gap-2 flex-shrink-0"
-                  style={{ background: 'rgba(239,68,68,0.08)', borderBottom: '1px solid rgba(239,68,68,0.2)' }}
-                >
+                <div className="px-4 py-2 flex items-start gap-2 flex-shrink-0" style={{ background: 'rgba(239,68,68,0.08)', borderBottom: '1px solid rgba(239,68,68,0.2)' }}>
                   <AlertTriangle size={13} style={{ color: '#ef4444', marginTop: 2 }} className="flex-shrink-0" />
                   <p className="text-xs leading-relaxed" style={{ color: '#fca5a5' }}>
                     Falha da IA ({failedJob.kind === 'quote' ? 'extração do orçamento' : 'resposta'}): {failedJob.error}
@@ -351,10 +397,7 @@ export default function ConversasIA() {
                           {msg.sender === 'visitor' ? 'cliente' : msg.sender === 'ai' ? 'IA' : 'você'}
                         </span>
                       </div>
-                      <div
-                        className="px-4 py-2.5 rounded-2xl text-sm leading-relaxed"
-                        style={{ whiteSpace: 'pre-wrap', ...style.bubble }}
-                      >
+                      <div className="px-4 py-2.5 rounded-2xl text-sm leading-relaxed" style={{ whiteSpace: 'pre-wrap', ...style.bubble }}>
                         {msg.text}
                       </div>
                     </div>
@@ -368,21 +411,13 @@ export default function ConversasIA() {
                 <div ref={messagesEndRef} />
               </div>
 
-              <form
-                onSubmit={sendReply}
-                className="p-3 flex gap-2 flex-shrink-0"
-                style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
-              >
+              <form onSubmit={sendReply} className="p-3 flex gap-2 flex-shrink-0" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                 <input
                   value={reply}
                   onChange={(e) => setReply(e.target.value)}
                   placeholder={isHuman ? 'Responder...' : 'Responder (a IA continua ativa)...'}
                   className="flex-1 min-w-0 px-3.5 py-2.5 rounded-xl text-sm outline-none"
-                  style={{
-                    background: 'rgba(255,255,255,0.04)',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    color: '#e4e4e7',
-                  }}
+                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#e4e4e7' }}
                 />
                 <button
                   type="submit"
@@ -401,14 +436,8 @@ export default function ConversasIA() {
           )}
         </div>
 
-        <div
-          className="xl:h-auto rounded-xl overflow-y-auto"
-          style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
-        >
-          <p
-            className="text-xs font-medium px-4 py-3"
-            style={{ color: '#71717a', borderBottom: '1px solid rgba(255,255,255,0.05)' }}
-          >
+        <div className="xl:h-auto rounded-xl overflow-y-auto" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <p className="text-xs font-medium px-4 py-3" style={{ color: '#71717a', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
             Orçamento
           </p>
           {detail ? (
