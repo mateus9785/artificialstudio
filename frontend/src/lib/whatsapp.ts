@@ -1,6 +1,6 @@
-// Número usado nos CTAs "Falar no WhatsApp" (Hero, Sobre, Serviços) e no
-// botão flutuante do canto da tela (WhatsAppButton), que substituiu o antigo
-// ChatWidget — o atendimento agora acontece no WhatsApp real.
+// Número usado nos CTAs estáticos "Falar no WhatsApp" (Hero, Sobre, Serviços)
+// e no link que o ChatWidget manda quando a IA precisa escalar a conversa
+// para um humano.
 export const WHATSAPP_NUMBER = '5516988190586'
 
 export function waLink(text?: string | null): string {
