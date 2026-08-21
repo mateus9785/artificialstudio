@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Lock } from 'lucide-react'
 import { api } from '../../lib/api'
@@ -16,30 +16,27 @@ export default function Login() {
     if (getAdminToken()) navigate('/admin/posts', { replace: true })
   }, [navigate])
 
-  async function handleSubmit(e) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setError('')
     setLoading(true)
     try {
-      const data = await api.post('/auth/login', { username, password, remember })
+      const data = (await api.post('/auth/login', { username, password, remember })) as {
+        token: string
+        admin: { id: number; username: string }
+      }
       setAdminSession(data.token, data.admin)
       navigate('/admin/posts', { replace: true })
     } catch (err) {
-      setError(err.message || 'Não foi possível entrar.')
+      setError((err as Error).message || 'Não foi possível entrar.')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div
-      className="min-h-screen flex items-center justify-center px-6"
-      style={{ background: '#050505' }}
-    >
-      <div
-        className="w-full max-w-sm p-8 rounded-2xl"
-        style={{ background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.08)' }}
-      >
+    <div className="min-h-screen flex items-center justify-center px-6" style={{ background: '#050505' }}>
+      <div className="w-full max-w-sm p-8 rounded-2xl" style={{ background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.08)' }}>
         <div className="flex items-center gap-2 mb-8">
           <img src="/logo.png" alt="Artificial Studio" className="w-9 h-9 object-contain flex-shrink-0" />
           <span className="text-lg font-semibold" style={{ color: '#f4f4f5' }}>
@@ -82,12 +79,7 @@ export default function Login() {
           </div>
 
           <label className="flex items-center gap-2 text-xs cursor-pointer select-none" style={{ color: '#a1a1aa' }}>
-            <input
-              type="checkbox"
-              checked={remember}
-              onChange={(e) => setRemember(e.target.checked)}
-              className="cursor-pointer"
-            />
+            <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} className="cursor-pointer" />
             Manter conectado por 30 dias
           </label>
 

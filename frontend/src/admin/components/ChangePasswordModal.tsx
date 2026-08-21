@@ -1,15 +1,15 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type CSSProperties, type FormEvent } from 'react'
 import { X, Save, KeyRound } from 'lucide-react'
 import { api } from '../../lib/api'
 import { getAdminToken } from '../../lib/adminAuth'
 
-const inputStyle = {
+const inputStyle: CSSProperties = {
   background: 'rgba(255,255,255,0.03)',
   border: '1px solid rgba(255,255,255,0.08)',
   color: '#f4f4f5',
 }
 
-export default function ChangePasswordModal({ onClose }) {
+export default function ChangePasswordModal({ onClose }: { onClose: () => void }) {
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -18,7 +18,7 @@ export default function ChangePasswordModal({ onClose }) {
   const [success, setSuccess] = useState(false)
 
   useEffect(() => {
-    function onKeyDown(e) {
+    function onKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') onClose()
     }
     document.body.style.overflow = 'hidden'
@@ -29,7 +29,7 @@ export default function ChangePasswordModal({ onClose }) {
     }
   }, [onClose])
 
-  async function handleSubmit(e) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setError('')
 
@@ -43,7 +43,7 @@ export default function ChangePasswordModal({ onClose }) {
       await api.put('/auth/password', { currentPassword, newPassword }, getAdminToken())
       setSuccess(true)
     } catch (err) {
-      setError(err.message || 'Não foi possível alterar a senha.')
+      setError((err as Error).message || 'Não foi possível alterar a senha.')
     } finally {
       setSaving(false)
     }
@@ -54,25 +54,13 @@ export default function ChangePasswordModal({ onClose }) {
       className="fixed inset-0 z-[100] flex items-center justify-center px-6 py-10 overflow-y-auto"
       style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}
     >
-      <div
-        className="w-full max-w-md p-8 rounded-2xl relative my-auto"
-        style={{ background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.08)' }}
-      >
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute top-5 right-5 p-1.5 rounded-lg cursor-pointer transition-colors"
-          style={{ color: '#71717a' }}
-          aria-label="Fechar"
-        >
+      <div className="w-full max-w-md p-8 rounded-2xl relative my-auto" style={{ background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.08)' }}>
+        <button type="button" onClick={onClose} className="absolute top-5 right-5 p-1.5 rounded-lg cursor-pointer transition-colors" style={{ color: '#71717a' }} aria-label="Fechar">
           <X size={18} />
         </button>
 
         <div className="flex items-center gap-2 mb-6">
-          <div
-            className="w-9 h-9 rounded-lg flex items-center justify-center"
-            style={{ background: 'linear-gradient(135deg, #0891b2, #7c3aed)' }}
-          >
+          <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #0891b2, #7c3aed)' }}>
             <KeyRound size={18} color="white" />
           </div>
           <span className="text-lg font-semibold" style={{ color: '#f4f4f5' }}>
