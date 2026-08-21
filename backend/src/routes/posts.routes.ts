@@ -2,13 +2,26 @@ import { Router } from 'express'
 import path from 'node:path'
 import fs from 'node:fs/promises'
 import { pool } from '../db/pool.ts'
-import { requireAdmin } from '../middleware/requireAdmin.js'
-import { uploadPostImage, convertToWebp, resolveWebpFilename, UPLOADS_DIR } from '../middleware/upload.js'
+import { requireAdmin } from '../middleware/requireAdmin.ts'
+import { uploadPostImage, convertToWebp, resolveWebpFilename, UPLOADS_DIR } from '../middleware/upload.ts'
 import { slugify } from '../utils/slug.ts'
 
 export const postsRouter = Router()
 
-function serializePost(row) {
+interface PostRow {
+  id: number
+  title: string
+  slug: string
+  excerpt: string
+  content: string | null
+  image_url: string | null
+  tag: string
+  tag_color: string
+  trending: number | boolean
+  published_at: string
+}
+
+function serializePost(row: PostRow) {
   return {
     id: row.id,
     title: row.title,
@@ -23,7 +36,7 @@ function serializePost(row) {
   }
 }
 
-async function ensureUniqueSlug(baseSlug, excludeId) {
+async function ensureUniqueSlug(baseSlug: string, excludeId?: string): Promise<string> {
   const base = slugify(baseSlug) || 'post'
   let slug = base
   let attempt = 1
@@ -33,7 +46,7 @@ async function ensureUniqueSlug(baseSlug, excludeId) {
       ? await pool.query('SELECT id FROM posts WHERE slug = ? AND id != ?', [slug, excludeId])
       : await pool.query('SELECT id FROM posts WHERE slug = ?', [slug])
 
-    if (rows.length === 0) return slug
+    if ((rows as unknown[]).length === 0) return slug
     attempt += 1
     slug = `${base}-${attempt}`
   }
@@ -41,31 +54,32 @@ async function ensureUniqueSlug(baseSlug, excludeId) {
 
 // Público: usado pela landing page
 postsRouter.get('/posts', async (req, res) => {
-  const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 0, 0), 50)
+  const limit = Math.min(Math.max(parseInt(String(req.query.limit ?? ''), 10) || 0, 0), 50)
   const sql = `SELECT * FROM posts ORDER BY published_at DESC, id DESC${limit ? ' LIMIT ?' : ''}`
   const [rows] = await pool.query(sql, limit ? [limit] : [])
-  res.json(rows.map(serializePost))
+  res.json((rows as PostRow[]).map(serializePost))
 })
 
 // Público: usado pela página de artigo (URL amigável /blog/:slug)
 postsRouter.get('/posts/:slug', async (req, res) => {
   const [rows] = await pool.query('SELECT * FROM posts WHERE slug = ?', [req.params.slug])
-  if (rows.length === 0) {
+  const postRows = rows as PostRow[]
+  if (postRows.length === 0) {
     return res.status(404).json({ error: 'Post não encontrado.' })
   }
-  res.json(serializePost(rows[0]))
+  res.json(serializePost(postRows[0]))
 })
 
 // Admin: mesma listagem, protegida (mantida separada para futura divergência, ex. rascunhos)
 postsRouter.get('/admin/posts', requireAdmin, async (req, res) => {
   const [rows] = await pool.query('SELECT * FROM posts ORDER BY published_at DESC, id DESC')
-  res.json(rows.map(serializePost))
+  res.json((rows as PostRow[]).map(serializePost))
 })
 
 // Admin: upload de imagem de capa do post (convertida para .webp, máx. 150KB)
 postsRouter.post('/admin/posts/upload', requireAdmin, (req, res) => {
-  uploadPostImage.single('image')(req, res, async (err) => {
-    if (err) return res.status(400).json({ error: err.message })
+  uploadPostImage.single('image')(req, res, async (err: unknown) => {
+    if (err) return res.status(400).json({ error: (err as Error).message })
     if (!req.file) return res.status(400).json({ error: 'Nenhuma imagem enviada.' })
 
     try {
@@ -79,7 +93,19 @@ postsRouter.post('/admin/posts/upload', requireAdmin, (req, res) => {
   })
 })
 
-function validatePostBody(body) {
+interface PostBody {
+  title?: string
+  excerpt?: string
+  content?: string
+  imageUrl?: string
+  tag?: string
+  tagColor?: string
+  trending?: boolean
+  publishedAt?: string
+  slug?: string
+}
+
+function validatePostBody(body: PostBody | undefined): string | null {
   const { title, excerpt, tag, tagColor, publishedAt } = body || {}
   if (!title || !excerpt || !tag || !tagColor || !publishedAt) {
     return 'Preencha título, resumo, tag, cor da tag e data de publicação.'
@@ -91,8 +117,8 @@ postsRouter.post('/admin/posts', requireAdmin, async (req, res) => {
   const error = validatePostBody(req.body)
   if (error) return res.status(400).json({ error })
 
-  const { title, excerpt, content, imageUrl, tag, tagColor, trending, publishedAt, slug } = req.body
-  const finalSlug = await ensureUniqueSlug(slug || title)
+  const { title, excerpt, content, imageUrl, tag, tagColor, trending, publishedAt, slug } = req.body as PostBody
+  const finalSlug = await ensureUniqueSlug(slug || title || '')
 
   const [result] = await pool.query(
     `INSERT INTO posts (title, slug, excerpt, content, image_url, tag, tag_color, trending, published_at)
@@ -100,16 +126,16 @@ postsRouter.post('/admin/posts', requireAdmin, async (req, res) => {
     [title, finalSlug, excerpt, content || null, imageUrl || null, tag, tagColor, Boolean(trending), publishedAt],
   )
 
-  const [rows] = await pool.query('SELECT * FROM posts WHERE id = ?', [result.insertId])
-  res.status(201).json(serializePost(rows[0]))
+  const [rows] = await pool.query('SELECT * FROM posts WHERE id = ?', [(result as { insertId: number }).insertId])
+  res.status(201).json(serializePost((rows as PostRow[])[0]))
 })
 
 postsRouter.put('/admin/posts/:id', requireAdmin, async (req, res) => {
   const error = validatePostBody(req.body)
   if (error) return res.status(400).json({ error })
 
-  const { title, excerpt, content, imageUrl, tag, tagColor, trending, publishedAt, slug } = req.body
-  const finalSlug = await ensureUniqueSlug(slug || title, req.params.id)
+  const { title, excerpt, content, imageUrl, tag, tagColor, trending, publishedAt, slug } = req.body as PostBody
+  const finalSlug = await ensureUniqueSlug(slug || title || '', req.params.id)
 
   const [result] = await pool.query(
     `UPDATE posts SET title = ?, slug = ?, excerpt = ?, content = ?, image_url = ?, tag = ?, tag_color = ?, trending = ?, published_at = ?
@@ -117,17 +143,17 @@ postsRouter.put('/admin/posts/:id', requireAdmin, async (req, res) => {
     [title, finalSlug, excerpt, content || null, imageUrl || null, tag, tagColor, Boolean(trending), publishedAt, req.params.id],
   )
 
-  if (result.affectedRows === 0) {
+  if ((result as { affectedRows: number }).affectedRows === 0) {
     return res.status(404).json({ error: 'Post não encontrado.' })
   }
 
   const [rows] = await pool.query('SELECT * FROM posts WHERE id = ?', [req.params.id])
-  res.json(serializePost(rows[0]))
+  res.json(serializePost((rows as PostRow[])[0]))
 })
 
 postsRouter.delete('/admin/posts/:id', requireAdmin, async (req, res) => {
   const [result] = await pool.query('DELETE FROM posts WHERE id = ?', [req.params.id])
-  if (result.affectedRows === 0) {
+  if ((result as { affectedRows: number }).affectedRows === 0) {
     return res.status(404).json({ error: 'Post não encontrado.' })
   }
   res.status(204).end()

@@ -1,7 +1,8 @@
 import { Router } from 'express'
 import { pool } from '../db/pool.ts'
-import { requireAdmin } from '../middleware/requireAdmin.js'
+import { requireAdmin } from '../middleware/requireAdmin.ts'
 import { enqueueJob } from '../services/aiChatWorker.ts'
+import { asyncHandler } from '../middleware/asyncHandler.ts'
 
 export const chatRouter = Router()
 
@@ -13,40 +14,48 @@ const GREETING_TEXT =
 // manual pelo admin, mas a IA para.
 const MAX_TURNS = Number(process.env.AI_CHAT_MAX_TURNS_PER_CONVERSATION) || 40
 
-// Express 4 não encaminha rejeição de handler async para o middleware de erro sozinho.
-function asyncHandler(fn) {
-  return (req, res, next) => {
-    Promise.resolve(fn(req, res, next)).catch(next)
-  }
+interface ConversationRow {
+  id: number
+  session_id: string
+  mode: 'ai' | 'human'
+  quote_status: 'none' | 'presented' | 'confirmed'
 }
 
-function isValidSessionId(sessionId) {
+interface MessageRow {
+  id: number
+  sender: 'visitor' | 'ai' | 'admin'
+  text: string
+  createdAt: string
+}
+
+function isValidSessionId(sessionId: unknown): sessionId is string {
   return typeof sessionId === 'string' && sessionId.length > 0 && sessionId.length <= 64
 }
 
-async function getOrCreateConversation(sessionId) {
+async function getOrCreateConversation(sessionId: string): Promise<ConversationRow> {
   const [existing] = await pool.query('SELECT * FROM chat_conversations WHERE session_id = ?', [sessionId])
-  if (existing[0]) return existing[0]
+  const existingRow = (existing as ConversationRow[])[0]
+  if (existingRow) return existingRow
 
   const [result] = await pool.query('INSERT INTO chat_conversations (session_id) VALUES (?)', [sessionId])
   await pool.query('INSERT INTO chat_messages (conversation_id, sender, text, read_by_visitor) VALUES (?, ?, ?, ?)', [
-    result.insertId,
+    (result as { insertId: number }).insertId,
     'ai',
     GREETING_TEXT,
     false,
   ])
 
-  const [rows] = await pool.query('SELECT * FROM chat_conversations WHERE id = ?', [result.insertId])
-  return rows[0]
+  const [rows] = await pool.query('SELECT * FROM chat_conversations WHERE id = ?', [(result as { insertId: number }).insertId])
+  return (rows as ConversationRow[])[0]
 }
 
 /** Há um turno da IA na fila ou rodando — é o que vira a bolha de "digitando" no widget. */
-async function hasPendingTurn(conversationId) {
+async function hasPendingTurn(conversationId: number): Promise<boolean> {
   const [rows] = await pool.query(
     "SELECT id FROM chat_ai_jobs WHERE conversation_id = ? AND kind = 'reply' AND status IN ('pending', 'running') LIMIT 1",
     [conversationId],
   )
-  return rows.length > 0
+  return (rows as unknown[]).length > 0
 }
 
 /**
@@ -57,12 +66,12 @@ async function hasPendingTurn(conversationId) {
  * Um job novo na fila resolve: quando chegar a vez dele, ou existe mensagem sem responder (e ele
  * responde) ou não existe (e ele encerra sem fazer nada).
  */
-async function hasQueuedTurn(conversationId) {
+async function hasQueuedTurn(conversationId: number): Promise<boolean> {
   const [rows] = await pool.query(
     "SELECT id FROM chat_ai_jobs WHERE conversation_id = ? AND kind = 'reply' AND status = 'pending' LIMIT 1",
     [conversationId],
   )
-  return rows.length > 0
+  return (rows as unknown[]).length > 0
 }
 
 // Público: inicia (ou retoma) a conversa do visitante e retorna o histórico
@@ -110,19 +119,19 @@ chatRouter.post(
 
     // A resposta da IA leva de 30s a 2min, então aqui só se enfileira: devolver 201 na hora é o que
     // permite ao widget mostrar a mensagem do cliente e a bolha de "digitando" imediatamente.
-    const [[{ turns }]] = await pool.query(
+    const [[{ turns }]] = (await pool.query(
       "SELECT COUNT(*) AS turns FROM chat_messages WHERE conversation_id = ? AND sender = 'visitor'",
       [conversation.id],
-    )
+    )) as [Array<{ turns: number }>, unknown]
     const canReply = conversation.mode === 'ai' && turns <= MAX_TURNS && !(await hasQueuedTurn(conversation.id))
     if (canReply) {
-      await enqueueJob(conversation.id, 'reply', result.insertId)
+      await enqueueJob(conversation.id, 'reply', (result as { insertId: number }).insertId)
     }
 
     const [rows] = await pool.query('SELECT id, sender, text, created_at AS createdAt FROM chat_messages WHERE id = ?', [
-      result.insertId,
+      (result as { insertId: number }).insertId,
     ])
-    res.status(201).json({ ...rows[0], aiPending: await hasPendingTurn(conversation.id) })
+    res.status(201).json({ ...(rows as MessageRow[])[0], aiPending: await hasPendingTurn(conversation.id) })
   }),
 )
 
@@ -138,26 +147,47 @@ chatRouter.get(
     }
 
     const [conversations] = await pool.query('SELECT id FROM chat_conversations WHERE session_id = ?', [sessionId])
-    if (!conversations[0]) return res.json({ messages: [], aiPending: false })
+    const conversationRows = conversations as Array<{ id: number }>
+    if (!conversationRows[0]) return res.json({ messages: [], aiPending: false })
 
     const [messages] = await pool.query(
       'SELECT id, sender, text, created_at AS createdAt FROM chat_messages WHERE conversation_id = ? AND id > ? ORDER BY id ASC',
-      [conversations[0].id, after],
+      [conversationRows[0].id, after],
     )
     await pool.query(
       "UPDATE chat_messages SET read_by_visitor = TRUE WHERE conversation_id = ? AND sender <> 'visitor'",
-      [conversations[0].id],
+      [conversationRows[0].id],
     )
 
-    res.json({ messages, aiPending: await hasPendingTurn(conversations[0].id) })
+    res.json({ messages, aiPending: await hasPendingTurn(conversationRows[0].id) })
   }),
 )
 
 // ---- Admin ----
 
-function serializeQuote(row) {
+interface QuoteRow {
+  id: number
+  project_name: string
+  client_name: string | null
+  company_name: string | null
+  contact: string | null
+  service_type: string | null
+  summary: string | null
+  requirements_json: unknown
+  integrations_json: unknown
+  price_min_brl: string | null
+  price_max_brl: string | null
+  monthly_brl: string | null
+  timeline_weeks: string | null
+  payment_terms: string | null
+  status: string
+  kanban_card_id: number | null
+  created_at: string
+}
+
+function serializeQuote(row: QuoteRow | undefined) {
   if (!row) return null
-  const parseList = (value) => {
+  const parseList = (value: unknown): unknown[] => {
     if (Array.isArray(value)) return value
     if (typeof value !== 'string') return []
     try {
@@ -217,7 +247,8 @@ chatRouter.get(
     const { id } = req.params
 
     const [conversations] = await pool.query('SELECT * FROM chat_conversations WHERE id = ?', [id])
-    if (!conversations[0]) return res.status(404).json({ error: 'Conversa não encontrada.' })
+    const conversationRows = conversations as Array<Record<string, unknown>>
+    if (!conversationRows[0]) return res.status(404).json({ error: 'Conversa não encontrada.' })
 
     const [messages] = await pool.query(
       'SELECT id, sender, text, created_at AS createdAt FROM chat_messages WHERE conversation_id = ? ORDER BY id ASC',
@@ -230,19 +261,20 @@ chatRouter.get(
     )
     await pool.query('UPDATE chat_messages SET read_by_admin = TRUE WHERE conversation_id = ? AND sender = "visitor"', [id])
 
+    const conversation = conversationRows[0]
     res.json({
       conversation: {
-        id: conversations[0].id,
-        sessionId: conversations[0].session_id,
-        visitorName: conversations[0].visitor_name,
-        visitorContact: conversations[0].visitor_contact,
-        mode: conversations[0].mode,
-        quoteStatus: conversations[0].quote_status,
-        createdAt: conversations[0].created_at,
-        updatedAt: conversations[0].updated_at,
+        id: conversation.id,
+        sessionId: conversation.session_id,
+        visitorName: conversation.visitor_name,
+        visitorContact: conversation.visitor_contact,
+        mode: conversation.mode,
+        quoteStatus: conversation.quote_status,
+        createdAt: conversation.created_at,
+        updatedAt: conversation.updated_at,
       },
       messages,
-      quote: serializeQuote(quotes[0]),
+      quote: serializeQuote((quotes as QuoteRow[])[0]),
       jobs,
     })
   }),
@@ -275,7 +307,7 @@ chatRouter.post(
     }
 
     const [result] = await pool.query('UPDATE chat_conversations SET mode = ? WHERE id = ?', [mode, req.params.id])
-    if (result.affectedRows === 0) return res.status(404).json({ error: 'Conversa não encontrada.' })
+    if ((result as { affectedRows: number }).affectedRows === 0) return res.status(404).json({ error: 'Conversa não encontrada.' })
 
     // Ao assumir, cancela o que estiver na fila: uma resposta da IA chegando depois da sua seria
     // uma segunda resposta para a mesma pergunta.
@@ -302,7 +334,7 @@ chatRouter.post(
     }
 
     const [conversations] = await pool.query('SELECT id FROM chat_conversations WHERE id = ?', [id])
-    if (!conversations[0]) {
+    if ((conversations as unknown[]).length === 0) {
       return res.status(404).json({ error: 'Conversa não encontrada.' })
     }
 
@@ -313,8 +345,8 @@ chatRouter.post(
     await pool.query('UPDATE chat_conversations SET updated_at = NOW() WHERE id = ?', [id])
 
     const [rows] = await pool.query('SELECT id, sender, text, created_at AS createdAt FROM chat_messages WHERE id = ?', [
-      result.insertId,
+      (result as { insertId: number }).insertId,
     ])
-    res.status(201).json(rows[0])
+    res.status(201).json((rows as MessageRow[])[0])
   }),
 )

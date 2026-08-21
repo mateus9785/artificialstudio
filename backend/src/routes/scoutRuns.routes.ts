@@ -1,8 +1,9 @@
 import { Router } from 'express'
 import { pool } from '../db/pool.ts'
-import { requireAdmin } from '../middleware/requireAdmin.js'
+import { requireAdmin } from '../middleware/requireAdmin.ts'
 import { getOrCreateConversationByPhone } from '../services/whatsappClient.ts'
 import { enqueueSuggestion } from '../services/waSuggestionWorker.ts'
+import { asyncHandler } from '../middleware/asyncHandler.ts'
 
 export const scoutRunsRouter = Router()
 
@@ -14,15 +15,23 @@ const STATE_REGEX = /^[A-Za-z]{2}$/
 const RADIUS_KM_BOUNDS = [0.2, 100]
 const MAX_RESULTS_BOUNDS = [1, 5000]
 
-// Express 4 não encaminha rejeição de handler async para o middleware de erro
-// sozinho.
-function asyncHandler(fn) {
-  return (req, res, next) => {
-    Promise.resolve(fn(req, res, next)).catch(next)
-  }
+interface RunRow {
+  id: number
+  niche: string
+  city: string
+  state: string | null
+  radius_km: string
+  max_results: number
+  with_llm: number | boolean
+  status: 'todo' | 'doing' | 'done' | 'error'
+  result_json: unknown
+  error: string | null
+  started_at: string | null
+  finished_at: string | null
+  created_at: string
 }
 
-function serializeRun(row) {
+function serializeRun(row: RunRow | undefined) {
   if (!row) return null
   return {
     id: row.id,
@@ -41,11 +50,50 @@ function serializeRun(row) {
   }
 }
 
+interface LeadRow {
+  id: number
+  name: string
+  category: string | null
+  city: string | null
+  state: string | null
+  website: string | null
+  address: string | null
+  email: string | null
+  phone_e164: string | null
+  whatsapp_phone_e164: string | null
+  instagram_url: string | null
+  instagram_followers: number | null
+  facebook_url: string | null
+  facebook_response_time: string | null
+  chat_widget: string | null
+  ecommerce_platform: string | null
+  enrichment_status: string | null
+  rating: string | null
+  reviews_count: number | null
+  fit_score: number | null
+  automation_verdict: string | null
+  pipeline_status: string | null
+  maps_url: string | null
+  segmento: string | null
+  porte: string | null
+  resumo: string | null
+  gancho_abordagem: string | null
+  catalogo: unknown
+  vende_online: number | boolean | null
+  atende_por_whatsapp: number | boolean | null
+  vende_json: unknown
+  sinais_automacao_json: unknown
+  dores_json: unknown
+  integracoes_json: unknown
+  confianca: string | null
+  site_fora_do_ar_motivo: string | null
+}
+
 // 'done' sem sinal `site_fora_do_ar` e o unico caso em que o site foi aberto
 // com sucesso — ver pegasus-scout/src/enrichment/enrichmentService.ts, que
 // grava esse sinal exatamente quando o dominio anunciado no Maps nao resolve
 // mais (nao e falha do robo, e informacao de prospeccao).
-function computeSiteStatus(row) {
+function computeSiteStatus(row: LeadRow): string {
   if (!row.website) return 'sem_site'
   if (row.site_fora_do_ar_motivo) return 'fora_do_ar'
   if (row.enrichment_status === 'pending' || row.enrichment_status === 'running') return 'nao_verificado'
@@ -54,7 +102,7 @@ function computeSiteStatus(row) {
   return 'ok'
 }
 
-function serializeLead(row) {
+function serializeLead(row: LeadRow) {
   return {
     id: row.id,
     name: row.name,
@@ -137,8 +185,8 @@ scoutRunsRouter.post(
       ],
     )
 
-    const [rows] = await pool.query('SELECT * FROM scout_runs WHERE id = ?', [result.insertId])
-    res.status(201).json(serializeRun(rows[0]))
+    const [rows] = await pool.query('SELECT * FROM scout_runs WHERE id = ?', [(result as { insertId: number }).insertId])
+    res.status(201).json(serializeRun((rows as RunRow[])[0]))
   }),
 )
 
@@ -148,7 +196,7 @@ scoutRunsRouter.get(
   asyncHandler(async (req, res) => {
     const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 10))
     const [rows] = await pool.query('SELECT * FROM scout_runs ORDER BY created_at DESC LIMIT ?', [limit])
-    res.json(rows.map(serializeRun))
+    res.json((rows as RunRow[]).map(serializeRun))
   }),
 )
 
@@ -156,15 +204,14 @@ scoutRunsRouter.post(
   '/admin/scout/runs/:id/retry',
   requireAdmin,
   asyncHandler(async (req, res) => {
-    const [result] = await pool.query(
-      "UPDATE scout_runs SET status = 'todo', error = NULL WHERE id = ? AND status = 'error'",
-      [req.params.id],
-    )
-    if (result.affectedRows === 0) {
+    const [result] = await pool.query("UPDATE scout_runs SET status = 'todo', error = NULL WHERE id = ? AND status = 'error'", [
+      req.params.id,
+    ])
+    if ((result as { affectedRows: number }).affectedRows === 0) {
       return res.status(409).json({ error: 'Execução não encontrada ou não está com erro.' })
     }
     const [rows] = await pool.query('SELECT * FROM scout_runs WHERE id = ?', [req.params.id])
-    res.json(serializeRun(rows[0]))
+    res.json(serializeRun((rows as RunRow[])[0]))
   }),
 )
 
@@ -182,28 +229,24 @@ scoutRunsRouter.post(
       await conn.beginTransaction()
 
       const [doingRows] = await conn.query("SELECT id FROM scout_runs WHERE status = 'doing' FOR UPDATE")
-      if (doingRows.length >= 1) {
+      if ((doingRows as unknown[]).length >= 1) {
         await conn.rollback()
         return res.json({ run: null })
       }
 
-      const [candidates] = await conn.query(
-        "SELECT id FROM scout_runs WHERE status = 'todo' ORDER BY created_at ASC LIMIT 1 FOR UPDATE",
-      )
-      if (candidates.length === 0) {
+      const [candidates] = await conn.query("SELECT id FROM scout_runs WHERE status = 'todo' ORDER BY created_at ASC LIMIT 1 FOR UPDATE")
+      const candidateRows = candidates as Array<{ id: number }>
+      if (candidateRows.length === 0) {
         await conn.rollback()
         return res.json({ run: null })
       }
 
-      const id = candidates[0].id
-      await conn.query(
-        "UPDATE scout_runs SET status = 'doing', started_at = NOW(), error = NULL WHERE id = ? AND status = 'todo'",
-        [id],
-      )
+      const id = candidateRows[0].id
+      await conn.query("UPDATE scout_runs SET status = 'doing', started_at = NOW(), error = NULL WHERE id = ? AND status = 'todo'", [id])
       await conn.commit()
 
       const [rows] = await pool.query('SELECT * FROM scout_runs WHERE id = ?', [id])
-      res.json({ run: serializeRun(rows[0]) })
+      res.json({ run: serializeRun((rows as RunRow[])[0]) })
     } catch (err) {
       await conn.rollback()
       throw err
@@ -222,7 +265,7 @@ scoutRunsRouter.post(
       "UPDATE scout_runs SET status = 'done', finished_at = NOW(), result_json = ? WHERE id = ? AND status = 'doing'",
       [result ? JSON.stringify(result) : null, req.params.id],
     )
-    if (updateResult.affectedRows === 0) {
+    if ((updateResult as { affectedRows: number }).affectedRows === 0) {
       return res.status(409).json({ error: 'Execução não encontrada ou não está rodando.' })
     }
     res.status(204).end()
@@ -238,7 +281,7 @@ scoutRunsRouter.post(
       "UPDATE scout_runs SET status = 'error', finished_at = NOW(), error = ? WHERE id = ? AND status = 'doing'",
       [error ? String(error).slice(0, 4000) : null, req.params.id],
     )
-    if (updateResult.affectedRows === 0) {
+    if ((updateResult as { affectedRows: number }).affectedRows === 0) {
       return res.status(409).json({ error: 'Execução não encontrada ou não está rodando.' })
     }
     res.status(204).end()
@@ -277,7 +320,7 @@ scoutRunsRouter.get(
   asyncHandler(async (req, res) => {
     const limit = Math.min(200, Math.max(1, Number(req.query.limit) || 30))
     const [rows] = await pool.query(LEADS_SELECT_SQL, [limit])
-    res.json(rows.map(serializeLead))
+    res.json((rows as LeadRow[]).map(serializeLead))
   }),
 )
 
@@ -285,11 +328,17 @@ scoutRunsRouter.post(
   '/admin/scout/leads/:id/start-conversation',
   requireAdmin,
   asyncHandler(async (req, res) => {
-    const [rows] = await pool.query(
-      'SELECT id, name, domain, whatsapp_phone_e164, phone_e164 FROM scout_prospects WHERE id = ?',
-      [req.params.id],
-    )
-    const prospect = rows[0]
+    const [rows] = await pool.query('SELECT id, name, domain, whatsapp_phone_e164, phone_e164 FROM scout_prospects WHERE id = ?', [
+      req.params.id,
+    ])
+    interface ProspectRow {
+      id: number
+      name: string
+      domain: string | null
+      whatsapp_phone_e164: string | null
+      phone_e164: string | null
+    }
+    const prospect = (rows as ProspectRow[])[0]
     if (!prospect) return res.status(404).json({ error: 'Lead não encontrado.' })
 
     const phone = prospect.whatsapp_phone_e164 || prospect.phone_e164
@@ -298,19 +347,18 @@ scoutRunsRouter.post(
     }
 
     // Opt-out é obrigação legal: número/domínio na blocklist não recebe abordagem, nem manual.
-    const [blocked] = await pool.query(
-      'SELECT id FROM scout_blocklist WHERE phone_e164 = ? OR (domain IS NOT NULL AND domain = ?) LIMIT 1',
-      [phone, prospect.domain],
-    )
-    if (blocked.length > 0) {
+    const [blocked] = await pool.query('SELECT id FROM scout_blocklist WHERE phone_e164 = ? OR (domain IS NOT NULL AND domain = ?) LIMIT 1', [
+      phone,
+      prospect.domain,
+    ])
+    if ((blocked as unknown[]).length > 0) {
       return res.status(422).json({ error: 'Este lead pediu para não ser contatado (blocklist).' })
     }
 
-    const [briefRows] = await pool.query(
-      'SELECT gancho_abordagem FROM scout_prospect_briefs WHERE prospect_id = ? ORDER BY updated_at DESC LIMIT 1',
-      [req.params.id],
-    )
-    const gancho = briefRows[0]?.gancho_abordagem
+    const [briefRows] = await pool.query('SELECT gancho_abordagem FROM scout_prospect_briefs WHERE prospect_id = ? ORDER BY updated_at DESC LIMIT 1', [
+      req.params.id,
+    ])
+    const gancho = (briefRows as Array<{ gancho_abordagem: string | null }>)[0]?.gancho_abordagem
 
     const conversation = await getOrCreateConversationByPhone(phone, { displayName: prospect.name })
 
@@ -319,9 +367,7 @@ scoutRunsRouter.post(
     // na tela quando ficar pronta. Nada é enviado sem o clique do admin.
     await enqueueSuggestion(conversation.id, 'cold_outreach', { prospectId: prospect.id })
 
-    const draftText = gancho
-      ? gancho
-      : `Olá! Vi o ${prospect.name} e gostaria de conversar sobre como facilitar o atendimento por aqui.`
+    const draftText = gancho ? gancho : `Olá! Vi o ${prospect.name} e gostaria de conversar sobre como facilitar o atendimento por aqui.`
 
     res.json({ conversationId: conversation.id, draftText, suggestionQueued: true })
   }),
